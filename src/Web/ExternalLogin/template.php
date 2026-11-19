@@ -47,6 +47,12 @@ $errors = $result?->errors ?? [];
                     <?php endif; ?>
                 </dd>
             </dl>
+            <p class="login-next-action">
+                <a class="button-link" href="/dashboard">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Open Dashboard</span>
+                </a>
+            </p>
         <?php else: ?>
             <?php if (isset($errors['general'])): ?>
                 <div class="alert alert-danger"><?= Html::encode($errors['general']) ?></div>
@@ -81,7 +87,10 @@ $errors = $result?->errors ?? [];
                     <p class="field-error"><?= Html::encode($errors['password']) ?></p>
                 <?php endif; ?>
 
-                <button type="submit">Login</button>
+                <button type="submit">
+                    <i data-lucide="log-in"></i>
+                    <span>Login</span>
+                </button>
             </form>
         <?php endif; ?>
     </section>

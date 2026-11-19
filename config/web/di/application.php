@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Web\NotFound\NotFoundHandler;
+use App\Web\Shared\Http\BasePathMiddleware;
 use Yiisoft\Csrf\CsrfTokenMiddleware;
 use Yiisoft\Definitions\DynamicReference;
 use Yiisoft\Definitions\Reference;
@@ -29,6 +30,7 @@ return [
                         ErrorCatcher::class,
                         SessionMiddleware::class,
                         CsrfTokenMiddleware::class,
+                        BasePathMiddleware::class,
                         RequestCatcherMiddleware::class,
                         Router::class,
                     ],

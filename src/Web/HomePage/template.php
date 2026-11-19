@@ -13,12 +13,28 @@ use Yiisoft\View\WebView;
 $this->setTitle($applicationParams->name);
 ?>
 
-<div class="text-center">
-    <h1>HROnline Yii3</h1>
+<main class="profile-page">
+    <section class="profile-card page-main-card">
+        <div class="profile-heading page-card-heading">
+            <div>
+                <h1>HROnline Yii3</h1>
+                <p>Login migration pilot.</p>
+            </div>
+        </div>
 
-    <p>External-login migration pilot.</p>
-
-    <p>
-        <a class="button-link" href="/external-login">Open external login</a>
-    </p>
-</div>
+        <div class="page-section-body profile-actions">
+            <a class="button-link" href="/login">
+                <i data-lucide="log-in"></i>
+                <span>Open login</span>
+            </a>
+            <a class="button-link button-link-secondary" href="/dashboard">
+                <i data-lucide="layout-dashboard"></i>
+                <span>Open dashboard</span>
+            </a>
+            <a class="button-link" href="/external-login">
+                <i data-lucide="external-link"></i>
+                <span>Open external login</span>
+            </a>
+        </div>
+    </section>
+</main>

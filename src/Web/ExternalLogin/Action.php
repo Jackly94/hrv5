@@ -37,17 +37,31 @@ final readonly class Action
                     $password,
                     $this->clientIp($request),
                 );
-            } catch (\Throwable) {
+            } catch (\Throwable $throwable) {
+                error_log((string) $throwable);
+
                 $result = ExternalLoginResult::failure([
                     'general' => 'External login is unavailable. Please try again later.',
                 ]);
             }
         }
 
-        return $this->viewRenderer->render(__DIR__ . '/template', [
+        $response = $this->viewRenderer->render(__DIR__ . '/template', [
             'values' => $values,
             'result' => $result,
         ]);
+
+        if ($result?->success === true && $result->legacySessionId !== null) {
+            return $response->withAddedHeader(
+                'Set-Cookie',
+                $this->legacySessionCookieHeader($result->legacySessionId, $request),
+            )->withAddedHeader(
+                'Set-Cookie',
+                $this->rememberLoginMethodCookieHeader($request),
+            );
+        }
+
+        return $response;
     }
 
     private function clientIp(ServerRequestInterface $request): string
@@ -62,5 +76,27 @@ final readonly class Action
         }
 
         return 'UNKNOWN';
+    }
+
+    private function legacySessionCookieHeader(string $sessionId, ServerRequestInterface $request): string
+    {
+        $cookie = 'hrv4=' . rawurlencode($sessionId) . '; Path=/; HttpOnly; SameSite=Lax';
+
+        if ($request->getUri()->getScheme() === 'https') {
+            $cookie .= '; Secure';
+        }
+
+        return $cookie;
+    }
+
+    private function rememberLoginMethodCookieHeader(ServerRequestInterface $request): string
+    {
+        $cookie = 'hr_login_method=external; Max-Age=1209600; Path=/; HttpOnly; SameSite=Lax';
+
+        if ($request->getUri()->getScheme() === 'https') {
+            $cookie .= '; Secure';
+        }
+
+        return $cookie;
     }
 }

@@ -32,22 +32,65 @@ final readonly class ExternalLoginService
             return ExternalLoginResult::failure($errors);
         }
 
-        $user = $this->findExternalUser($username);
-        if ($user === null || !$this->validatePassword($password, (string) $user['pwsd'])) {
+        $user = $this->findLoginIdentity($username);
+        if ($user === null || !$this->validatePassword($password, (string) $user['password_hash'])) {
             return ExternalLoginResult::failure([
                 'password' => 'Incorrect username or password.',
             ]);
         }
 
-        $userId = (string) $user['user_id'];
-        $this->sessionWriter->loginExternal($userId, $userId);
-        $this->log($userId, $ipAddress);
+        $legacySessionId = $this->sessionWriter->login(
+            (string) $user['identity_id'],
+            (string) $user['auth_key'],
+        );
+        $this->log((string) $user['log_id'], $ipAddress);
 
         return ExternalLoginResult::success(
-            'extenal-' . $userId,
-            (string) $user['name'],
+            (string) $user['identity_id'],
+            (string) $user['display_name'],
             $this->normalizeReturnUrl($user['return_url'] ?? null),
+            $legacySessionId,
         );
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function findLoginIdentity(string $username): ?array
+    {
+        return $this->findStaffUser($username) ?? $this->findExternalUser($username);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function findStaffUser(string $username): ?array
+    {
+        $row = $this->db->createCommand(
+            <<<SQL
+            SELECT ICNO, CONm, COOldID, COOPass
+            FROM hronline.tblprcobiodata
+            WHERE ICNO = :username
+              AND Status != 6
+            LIMIT 1
+            SQL,
+            [':username' => $username],
+        )->queryOne();
+
+        if (!is_array($row)) {
+            return null;
+        }
+
+        $icno = (string) $row['ICNO'];
+
+        return [
+            'identity_id' => 'staff-' . $icno,
+            'auth_key' => (string) $row['COOldID'],
+            'log_id' => $icno,
+            'display_name' => (string) $row['CONm'],
+            'password_hash' => (string) $row['COOPass'],
+            'return_url' => null,
+        ];
     }
 
     /**
@@ -66,7 +109,20 @@ final readonly class ExternalLoginService
             [':username' => $username],
         )->queryOne();
 
-        return is_array($row) ? $row : null;
+        if (!is_array($row)) {
+            return null;
+        }
+
+        $userId = (string) $row['user_id'];
+
+        return [
+            'identity_id' => 'extenal-' . $userId,
+            'auth_key' => $userId,
+            'log_id' => $userId,
+            'display_name' => (string) $row['name'],
+            'password_hash' => (string) $row['pwsd'],
+            'return_url' => $row['return_url'] ?? null,
+        ];
     }
 
     private function validatePassword(string $password, string $storedHash): bool

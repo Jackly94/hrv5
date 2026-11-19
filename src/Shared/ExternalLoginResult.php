@@ -14,12 +14,18 @@ final readonly class ExternalLoginResult
         public ?string $identityId,
         public ?string $displayName,
         public ?string $returnUrl,
+        public ?string $legacySessionId,
         public array $errors,
     ) {}
 
-    public static function success(string $identityId, string $displayName, ?string $returnUrl): self
+    public static function success(
+        string $identityId,
+        string $displayName,
+        ?string $returnUrl,
+        string $legacySessionId,
+    ): self
     {
-        return new self(true, $identityId, $displayName, $returnUrl, []);
+        return new self(true, $identityId, $displayName, $returnUrl, $legacySessionId, []);
     }
 
     /**
@@ -27,6 +33,6 @@ final readonly class ExternalLoginResult
      */
     public static function failure(array $errors): self
     {
-        return new self(false, null, null, null, $errors);
+        return new self(false, null, null, null, null, $errors);
     }
 }

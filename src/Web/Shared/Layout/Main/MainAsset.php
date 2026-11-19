@@ -13,6 +13,13 @@ final class MainAsset extends AssetBundle
     public ?string $sourcePath = '@assetsSource/main';
 
     public array $css = [
+        'vendor/tom-select/tom-select.css',
         'site.css',
+    ];
+
+    public array $js = [
+        'vendor/tom-select/tom-select.complete.min.js',
+        'vendor/lucide/lucide.min.js',
+        'site.js',
     ];
 }

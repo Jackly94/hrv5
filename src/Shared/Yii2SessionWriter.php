@@ -7,12 +7,11 @@ namespace App\Shared;
 final class Yii2SessionWriter
 {
     private const YII2_SESSION_NAME = 'hrv4';
-    private const YII2_EXTERNAL_ID_PREFIX = 'extenal-';
 
-    public function loginExternal(string $userId, string $authKey, int $timeoutSeconds = 1800): void
+    public function login(string $identityId, string $authKey, int $timeoutSeconds = 1800): string
     {
-        $this->write([
-            '__id' => self::YII2_EXTERNAL_ID_PREFIX . $userId,
+        return $this->write([
+            '__id' => $identityId,
             '__authKey' => $authKey,
             '__expire' => time() + $timeoutSeconds,
         ]);
@@ -21,7 +20,7 @@ final class Yii2SessionWriter
     /**
      * @param array<string, mixed> $sessionValues
      */
-    private function write(array $sessionValues): void
+    private function write(array $sessionValues): string
     {
         $previousSessionName = session_name();
         $previousSessionId = session_id();
@@ -34,13 +33,6 @@ final class Yii2SessionWriter
         session_name(self::YII2_SESSION_NAME);
         session_id('');
         session_cache_limiter('');
-        session_set_cookie_params([
-            'lifetime' => 0,
-            'path' => '/',
-            'secure' => $this->isSecureRequest(),
-            'httponly' => true,
-            'samesite' => 'Lax',
-        ]);
 
         session_start();
         session_regenerate_id(true);
@@ -49,15 +41,14 @@ final class Yii2SessionWriter
             $_SESSION[$key] = $value;
         }
 
+        $legacySessionId = session_id();
+
         session_write_close();
 
         session_id($previousSessionId);
         session_name($previousSessionName);
         session_cache_limiter($previousCacheLimiter);
-    }
 
-    private function isSecureRequest(): bool
-    {
-        return ($_SERVER['HTTPS'] ?? '') !== '' && strtolower((string) $_SERVER['HTTPS']) !== 'off';
+        return $legacySessionId;
     }
 }

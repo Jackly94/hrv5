@@ -28,6 +28,7 @@ final class Environment
         self::setEnvironment();
         self::setBoolean('APP_C3', false);
         self::setBoolean('APP_DEBUG', false);
+        self::setBasePath('APP_BASE_PATH', '');
         self::setNonEmptyStringOrNull('APP_HOST_PATH', null);
     }
 
@@ -76,6 +77,12 @@ final class Environment
         return self::$values['APP_DEBUG'];
     }
 
+    public static function appBasePath(): string
+    {
+        /** @var string */
+        return self::$values['APP_BASE_PATH'];
+    }
+
     private static function setEnvironment(): void
     {
         $environment = self::getRawValue('APP_ENV') ?: self::PROD;
@@ -117,6 +124,15 @@ final class Environment
     {
         $value = self::getRawValue($key);
         self::$values[$key] = $value === null || $value === '' ? $default : $value;
+    }
+
+    private static function setBasePath(string $key, string $default): void
+    {
+        $value = trim(self::getRawValue($key) ?? $default);
+
+        self::$values[$key] = $value === '' || $value === '/'
+            ? ''
+            : '/' . trim($value, '/');
     }
 
     private static function getRawValue(string $key): ?string
