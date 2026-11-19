@@ -1973,3 +1973,21 @@ Current migration boundary:
 - Migrated STARS top-menu pages are local Yii3 pages and follow the attendance UI standard.
 - Many migrated pages are intentionally read-first/read-only.
 - Approval, reject, delete, edit, print/PDF, WFH day edits, shift setup saves, THTC verification, and notification/audit side effects remain Yii2 handoffs until the write-flow migration slices.
+
+### Yii3 DB Configuration Migration
+
+Recorded on 2026-11-19.
+
+- Added Yii3-owned DB config at `config/common/db-connections.php`.
+- `config/common/db.php` now returns the primary `db` connection config from that registry.
+- `config/common/di/application.php` now binds:
+  - `DbConnectionRegistry` for named Yii2-compatible DB connections.
+  - `ConnectionInterface` to the primary `db` connection.
+- Migrated Yii2 DB connection names into Yii3 config lookup:
+  - `db`, `db2`, `db3`, `db4`, `db5`, `db6`, `db7`, `db8`, `db9`, `db10`, `db11`, `db12`, `db13`, `db14`, `db15`, `db16`, `db17`, `db18`, `db19`.
+- Env var pattern:
+  - `HRONLINE_DB_DSN`, `HRONLINE_DB_USERNAME`, `HRONLINE_DB_PASSWORD`
+  - `HRONLINE_DB2_DSN`, `HRONLINE_DB2_USERNAME`, `HRONLINE_DB2_PASSWORD`
+  - and so on for `DB3` through `DB19`.
+- Local fallback remains enabled temporarily: if env vars are not set, Yii3 reads the matching old Yii2 `../staff/config/db*.php`.
+- MySQL configs can be instantiated now. SQL Server configs are present but not instantiated yet because the Yii3 app currently only has `yiisoft/db-mysql`; SQL Server support needs the matching Yii DB package/driver before using `db3`, `db4`, `db5`, `db6`, `db9`, `db10`, `db12`, or `db14`.

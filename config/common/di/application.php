@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Shared\ApplicationParams;
-use App\Shared\DbConnectionFactory;
+use App\Shared\DbConnectionRegistry;
 use Yiisoft\Db\Connection\ConnectionInterface;
 
 /** @var array $params */
@@ -16,7 +16,8 @@ return [
             'locale' => $params['application']['locale'],
         ],
     ],
-    ConnectionInterface::class => static fn () => DbConnectionFactory::create(
-        dirname(__DIR__, 4) . '/staff/config/db.php',
+    DbConnectionRegistry::class => static fn () => new DbConnectionRegistry(
+        require dirname(__DIR__) . '/db-connections.php',
     ),
+    ConnectionInterface::class => static fn (DbConnectionRegistry $registry) => $registry->primary(),
 ];

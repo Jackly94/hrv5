@@ -20,10 +20,25 @@ final class DbConnectionFactory
 
         $config = require $yii2DbConfigFile;
 
+        return self::fromConfig($config);
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     */
+    public static function fromConfig(array $config): ConnectionInterface
+    {
         foreach (['dsn', 'username', 'password'] as $key) {
             if (!isset($config[$key]) || !is_string($config[$key])) {
-                throw new RuntimeException("Yii2 DB config is missing {$key}.");
+                throw new RuntimeException("DB config is missing {$key}.");
             }
+        }
+
+        if (!str_starts_with($config['dsn'], 'mysql:')) {
+            $driver = strtok($config['dsn'], ':') ?: 'unknown';
+            throw new RuntimeException(
+                "DB driver {$driver} is configured but this Yii3 app currently supports mysql only.",
+            );
         }
 
         $connection = new Connection(
