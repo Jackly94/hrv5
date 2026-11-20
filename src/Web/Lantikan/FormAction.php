@@ -41,8 +41,14 @@ final readonly class FormAction
                 $input['COEmail'] = $this->lantikanService->suggestedEmail((string) ($input['CONm'] ?? ''));
             }
 
-            $result = $this->lantikanService->dryRunAppointment($flow, $input);
+            $result = isset($input['live_submit'])
+                ? $this->lantikanService->submitAppointment($legacySession['identityId'], $flow, $input, $this->clientIp($request))
+                : $this->lantikanService->dryRunAppointment($flow, $input);
             $form['values'] = $result['values'];
+
+            if (($result['success'] ?? false) === true && isset($result['resultUrl']) && is_string($result['resultUrl'])) {
+                return $this->redirect($result['resultUrl']);
+            }
         }
 
         return $this->viewRenderer->render(__DIR__ . '/form', [
@@ -64,5 +70,18 @@ final readonly class FormAction
     private function redirect(string $url): ResponseInterface
     {
         return $this->responseFactory->createResponse(302)->withHeader('Location', $url);
+    }
+
+    private function clientIp(ServerRequestInterface $request): string
+    {
+        $server = $request->getServerParams();
+        foreach (['HTTP_X_REAL_IP', 'HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'] as $key) {
+            $value = $server[$key] ?? null;
+            if (is_string($value) && trim($value) !== '') {
+                return trim(explode(',', $value)[0]);
+            }
+        }
+
+        return 'UNKNOWN';
     }
 }

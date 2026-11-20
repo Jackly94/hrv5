@@ -29,9 +29,6 @@ final readonly class LantikanStafBaruService
      */
     public function dryRun(array $input): array
     {
-        $fields = $this->references->appointmentFields('staf-baru');
-        $values = $this->normalize($fields, $input);
-        $errors = $this->validate($fields, $values);
         $proposed = [
             'Dry-run only: no appointment records were inserted.',
             'Would reserve UMSPER with an advisory lock before live insert.',
@@ -40,14 +37,39 @@ final readonly class LantikanStafBaruService
             'STARS/security/medical side effects remain disabled until owner approval.',
         ];
 
+        $result = $this->prepare($input, false);
+
         if (!$this->activeDirectory->enabled()) {
             $proposed[] = 'AD email existence check skipped because AD API is disabled locally.';
-        } elseif (!isset($errors['COEmail']) && ($values['COEmail'] ?? '') !== '') {
-            $emailCheck = $this->activeDirectory->find($values['COEmail'], 'EMAIL');
-            if (!$emailCheck['success']) {
-                $errors['COEmail'] = $emailCheck['message'];
-            } elseif (($emailCheck['data']['exists'] ?? false) === true) {
-                $errors['COEmail'] = 'Emel rasmi sedang digunakan. Sila masukkan email rasmi yang baru.';
+        }
+
+        $result['proposed'] = $proposed;
+
+        return $result;
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array{success: bool, values: array<string, string>, errors: array<string, string>, proposed: list<string>, plan?: array<string, mixed>}
+     */
+    public function prepare(array $input, bool $requireAdCheck): array
+    {
+        $fields = $this->references->appointmentFields('staf-baru');
+        $values = $this->normalize($fields, $input);
+        $errors = $this->validate($fields, $values);
+
+        if (!isset($errors['COEmail']) && ($values['COEmail'] ?? '') !== '') {
+            if (!$this->activeDirectory->enabled()) {
+                if ($requireAdCheck) {
+                    $errors['COEmail'] = 'Semakan AD emel rasmi diperlukan sebelum submit Yii3. Aktifkan HRONLINE_AD_ENABLE=1 dan credentials, atau gunakan Yii2 fallback.';
+                }
+            } else {
+                $emailCheck = $this->activeDirectory->find($values['COEmail'], 'EMAIL');
+                if (!$emailCheck['success']) {
+                    $errors['COEmail'] = $emailCheck['message'];
+                } elseif (($emailCheck['data']['exists'] ?? false) === true) {
+                    $errors['COEmail'] = 'Emel rasmi sedang digunakan. Sila masukkan email rasmi yang baru.';
+                }
             }
         }
 
@@ -55,7 +77,7 @@ final readonly class LantikanStafBaruService
             'success' => $errors === [],
             'values' => $values,
             'errors' => $errors,
-            'proposed' => $proposed,
+            'proposed' => [],
         ];
 
         if ($errors === []) {
@@ -197,12 +219,15 @@ final readonly class LantikanStafBaruService
      * @param array<string, string> $values
      * @return array<string, mixed>
      */
-    private function insertPlan(array $values): array
+    public function insertPlan(array $values, bool $liveReservation = false, string $createdBy = '', string $ipAddress = '', ?string $now = null): array
     {
         $umsper = $this->nextUmsper($values['startDateLantik']);
         $derived = $this->derivedValues($values, $umsper);
         $educationTitle = $this->educationTitle($values['HighestEduLevelCd']);
         $vcIcno = $this->vcIcno();
+        $now ??= date('Y-m-d H:i:s');
+        $createdBy = $createdBy !== '' ? $createdBy : 'YII3-LANTIKAN';
+        $hakikiGrade = $values['gredJawatan_hakiki'] !== '' ? $values['gredJawatan_hakiki'] : $values['gredJawatan'];
 
         return [
             'summary' => [
@@ -210,6 +235,7 @@ final readonly class LantikanStafBaruService
                 'COOldID' => $umsper['COOldID'],
                 'COOldIDNo' => $umsper['COOldIDNo'],
                 'COOldIDDt' => $umsper['COOldIDDt'],
+                'LiveReservation' => $liveReservation ? '1' : '0',
                 'ConfirmStatusCd' => $derived['ConfirmStatusCd'],
                 'PsnStatusCd' => $derived['PsnStatusCd'],
                 'PsnAthyCd' => $derived['PsnAthyCd'],
@@ -219,14 +245,58 @@ final readonly class LantikanStafBaruService
             'coreTables' => [
                 'hronline.tblprcobiodata' => [
                     'ICNO' => $values['ICNO'],
+                    'HighestEduLevelCd' => $values['HighestEduLevelCd'],
+                    'isSabahan' => $values['isSabahan'] !== '' ? $values['isSabahan'] : null,
+                    'ReligionCd' => $values['ReligionCd'],
+                    'RaceCd' => $values['RaceCd'],
+                    'EthnicCd' => $values['EthnicCd'],
+                    'ArmyPoliceCd' => $values['ArmyPoliceCd'],
+                    'BloodTypeCd' => $values['BloodTypeCd'],
+                    'MrtlStatusCd' => $values['MrtlStatusCd'],
+                    'TitleCd' => $values['TitleCd'],
+                    'ConfermentDt' => $values['ConfermentDt'],
+                    'GenderCd' => $values['GenderCd'],
+                    'COBirthPlaceCd' => $values['COBirthPlaceCd'],
+                    'COBirthCountryCd' => $values['COBirthCountryCd'],
+                    'NegaraAsalCd' => $values['NegaraAsalCd'],
+                    'NegeriAsalCd' => $values['NegeriAsalCd'],
+                    'NegeriAsalIbu' => $values['NegeriAsalIbu'],
+                    'NegeriAsalBapa' => $values['NegeriAsalBapa'],
+                    'NatCd' => $values['NatCd'],
+                    'NatStatusCd' => $values['NatStatusCd'],
                     'CONm' => $values['CONm'],
-                    'COOldID' => $umsper['COOldID'],
                     'COEmail' => $values['COEmail'],
-                    'Status' => '1',
-                    'DeptId_hakiki' => $values['DeptId'],
-                    'campus_id_hakiki' => $values['campus_id'],
-                    'gredJawatan_2' => $values['gredJawatan'],
+                    'COEmail2' => $values['COEmail2'],
+                    'COBumiStatus' => $values['COBumiStatus'],
+                    'COOldID' => $umsper['COOldID'],
+                    'COBirthCertNo' => $values['COBirthCertNo'],
+                    'COBirthDt' => $values['COBirthDt'],
+                    'COHPhoneNo' => $values['COHPhoneNo'],
+                    'COHPhoneNo2' => $values['COHPhoneNo2'] !== '' ? $values['COHPhoneNo2'] : null,
+                    'COOUCTelNo' => $derived['COOUCTelNo'],
                     'COOPass' => self::DEFAULT_PASSWORD_HASH,
+                    'COHPhoneStatus' => $values['COHPhoneStatus'],
+                    'DeptId' => $values['DeptId'],
+                    'DeptId_hakiki' => $values['DeptId'],
+                    'campus_id' => $values['campus_id'],
+                    'statLantikan' => $values['statLantikan'],
+                    'startDateLantik' => $values['startDateLantik'],
+                    'endDateLantik' => $values['endDateLantik'],
+                    'Status' => '1',
+                    'startDateStatus' => $values['startDateLantik'],
+                    'noWaran' => $values['noWaran'] !== '' ? $values['noWaran'] : null,
+                    'gredJawatan' => $values['gredJawatan'],
+                    'gredJawatan_hakiki' => $hakikiGrade,
+                    'statSandangan' => $values['statSandangan'],
+                    'startDateSandangan' => $values['startDateLantik'],
+                    'endDateSandangan' => $values['endDateLantik'],
+                    'gredJawatan_2' => $values['gredJawatan'],
+                    'ApmtTypeCd' => $values['ApmtTypeCd'],
+                    'last_update' => $now,
+                    'last_updater' => $createdBy,
+                    'campus_id_hakiki' => $values['campus_id'],
+                    'KodProgram' => $values['KodProgram'] !== '' ? $values['KodProgram'] : null,
+                    'kemaskini_terakhir' => $now,
                 ],
                 'hronline.umsper' => [
                     'ICNO' => $values['ICNO'],
@@ -241,8 +311,8 @@ final readonly class LantikanStafBaruService
                 'hronline.tblrscosandangan' => ['ICNO' => $values['ICNO'], 'gredjawatan' => $values['gredJawatan'], 'sandangan_id' => $values['statSandangan'], 'ApmtTypeCd' => $values['ApmtTypeCd'], 'start_date' => $values['startDateLantik']],
                 'hronline.tblrscoapmtstatus' => ['ICNO' => $values['ICNO'], 'ApmtStatusCd' => $values['statLantikan'], 'ApmtStatusStDt' => $values['startDateLantik'], 'ApmtStatusEndDt' => $values['endDateLantik']],
                 'hronline.tblrscoservstatus' => ['ICNO' => $values['ICNO'], 'ServStatusCd' => '1', 'ServStatusDtl' => '1', 'ServStatusStDt' => $values['startDateLantik'], 'sebab_berhenti' => '-'],
-                'hronline.tblpreduach' => ['ICNO' => $values['ICNO'], 'InstCd' => '999', 'HighestEduLevelCd' => $values['HighestEduLevelCd'], 'EduCertTitle' => $educationTitle, 'OverallGrade' => 'PASS', 'AcrtdEduAch' => '1', 'Bon' => '0'],
-                'hronline.tblpenempatan' => ['ICNO' => $values['ICNO'], 'date_start' => $values['startDateLantik'], 'dept_id' => $values['DeptId'], 'campus_id' => $values['campus_id'], 'reason_id' => '1', 'remark' => 'Penempatan asal'],
+                'hronline.tblpreduach' => ['ICNO' => $values['ICNO'], 'InstCd' => '999', 'HighestEduLevelCd' => $values['HighestEduLevelCd'], 'MajorCd' => '0000', 'SponsorshipCd' => '0000', 'EduCertTitle' => $educationTitle, 'EduCertTitleBI' => '-', 'OverallGrade' => 'PASS', 'ConfermentDt' => $values['ConfermentDt'], 'AcrtdEduAch' => '1', 'Bon' => '0'],
+                'hronline.tblpenempatan' => ['ICNO' => $values['ICNO'], 'date_start' => $values['startDateLantik'], 'date_update' => $now, 'dept_id' => $values['DeptId'], 'campus_id' => $values['campus_id'], 'reason_id' => '1', 'remark' => 'Penempatan asal', 'letter_order_refno' => '-', 'date_letter_order' => $values['startDateLantik'], 'letter_refno' => 'Penempatan asal', 'update_by' => $createdBy],
                 'hronline.tblrscoaptathy' => ['ICNO' => $values['ICNO'], 'AptAthyCd' => '387', 'ICNOHeadServ' => $vcIcno, 'AptAthyStDt' => $values['startDateLantik']],
                 'hronline.tblrscoservload' => ['ICNO' => $values['ICNO'], 'ServLoadCd' => '1', 'ServLoadStDt' => $values['startDateLantik']],
                 'hronline.tblrscoconfirmstatus' => ['ICNO' => $values['ICNO'], 'ConfirmStatusCd' => $derived['ConfirmStatusCd'], 'ConfirmStatusStDt' => $values['startDateLantik']],

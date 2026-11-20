@@ -5,10 +5,12 @@ declare(strict_types=1);
 use App\Shared\ApplicationParams;
 use Yiisoft\Html\Html;
 use Yiisoft\View\WebView;
+use Yiisoft\Yii\View\Renderer\Csrf;
 
 /**
  * @var WebView $this
  * @var ApplicationParams $applicationParams
+ * @var Csrf $csrf
  * @var array<string, mixed>|null $attendance
  * @var string $identityId
  * @var array{slug: string, title: string} $page
@@ -680,7 +682,13 @@ $this->setTitle($page['title'] . ' - STARS - ' . $applicationParams->name);
                                             <td><span class="status-badge <?= Html::encode($badgeClass((string) $row['status'])) ?>"><?= Html::encode((string) $row['status']) ?></span></td>
                                             <td><?= Html::encode((string) $row['entryDate']) ?></td>
                                             <td><?= Html::encode((string) $row['approvalDate']) ?></td>
-                                            <td><a class="grid-action grid-action-danger" href="<?= Html::encode((string) $row['deleteUrl']) ?>" target="_blank" rel="noopener"><i data-lucide="trash-2"></i><span>Yii2</span></a></td>
+                                            <td>
+                                                <form class="grid-action-form" method="post" action="<?= Html::encode((string) $row['deleteUrl']) ?>" onsubmit="return window.confirm('Padam permohonan WFH ini?');">
+                                                    <?= $csrf->hiddenInput() ?>
+                                                    <input type="hidden" name="redirect" value="/kehadiran/pantau-permohonan-wfh">
+                                                    <button class="grid-action grid-action-danger" type="submit"><i data-lucide="trash-2"></i><span>Padam</span></button>
+                                                </form>
+                                            </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -716,7 +724,7 @@ $this->setTitle($page['title'] . ' - STARS - ' . $applicationParams->name);
                                             <td><?= Html::encode((string) $row['remark']) ?></td>
                                             <td><?= $row['documentUrl'] === '' ? '-' : '<a class="grid-action" href="' . Html::encode((string) $row['documentUrl']) . '" target="_blank" rel="noopener"><i data-lucide="download"></i><span>File</span></a>' ?></td>
                                             <td><?= $row['status'] === '' ? '-' : '<span class="status-badge ' . Html::encode($badgeClass((string) $row['status'])) . '">' . Html::encode((string) $row['status']) . '</span>' ?></td>
-                                            <td><a class="grid-action attendance-primary-action" href="<?= Html::encode((string) $row['actionUrl']) ?>" target="_blank" rel="noopener"><i data-lucide="pencil"></i><span>Yii2</span></a></td>
+                                            <td><a class="grid-action attendance-primary-action" href="<?= Html::encode((string) $row['actionUrl']) ?>"><i data-lucide="pencil"></i><span>Review</span></a></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>

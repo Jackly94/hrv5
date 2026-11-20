@@ -30,6 +30,9 @@ return [
             Route::methods(['GET', 'POST'], '/lantikan/lantik-staf-baru')
                 ->action(Web\Lantikan\FormAction::class)
                 ->name('lantikan-lantik-staf-baru'),
+            Route::get('/lantikan/lantik-staf-baru/result')
+                ->action(Web\Lantikan\ResultAction::class)
+                ->name('lantikan-lantik-staf-baru-result'),
             Route::methods(['GET', 'POST'], '/lantikan/lantik-phs')
                 ->action(Web\Lantikan\FormAction::class)
                 ->name('lantikan-lantik-phs'),
@@ -120,6 +123,21 @@ return [
             Route::get('/kehadiran/absent-list-kp')
                 ->action(Web\Kehadiran\OfficerAction::class)
                 ->name('kehadiran-absent-list-kp'),
+            Route::methods(['GET', 'POST'], '/kehadiran/pengesahan')
+                ->action(Web\Kehadiran\WriteAction::class)
+                ->name('kehadiran-pengesahan'),
+            Route::methods(['GET', 'POST'], '/kehadiran/wfh-lulus-tindakan')
+                ->action(Web\Kehadiran\WriteAction::class)
+                ->name('kehadiran-wfh-lulus-tindakan'),
+            Route::methods(['GET', 'POST'], '/kehadiran/delete-wfh')
+                ->action(Web\Kehadiran\WriteAction::class)
+                ->name('kehadiran-delete-wfh'),
+            Route::methods(['GET', 'POST'], '/kehadiran/verify-thtc-sv')
+                ->action(Web\Kehadiran\WriteAction::class)
+                ->name('kehadiran-verify-thtc-sv'),
+            Route::methods(['GET', 'POST'], '/kehadiran/approve-thtc')
+                ->action(Web\Kehadiran\WriteAction::class)
+                ->name('kehadiran-approve-thtc'),
             Route::get('/kehadiran/senarai_kakitangan')
                 ->action(Web\Kehadiran\SupervisorAction::class)
                 ->name('kehadiran-senarai-kakitangan'),
@@ -165,6 +183,42 @@ return [
             Route::get('/kehadiran/absent-list-sv')
                 ->action(Web\Kehadiran\SupervisorAction::class)
                 ->name('kehadiran-absent-list-sv'),
+            Route::get('/kehadiran/kj-pantau-kehadiran')
+                ->action(Web\Kehadiran\HeadDepartmentAction::class)
+                ->name('kehadiran-kj-pantau-kehadiran'),
+            Route::get('/kehadiran/wfh-jadual-kj')
+                ->action(Web\Kehadiran\HeadDepartmentAction::class)
+                ->name('kehadiran-wfh-jadual-kj'),
+            Route::get('/kehadiran/list-kj')
+                ->action(Web\Kehadiran\HeadDepartmentAction::class)
+                ->name('kehadiran-list-kj'),
+            Route::get('/kehadiran/staff-all')
+                ->action(Web\Kehadiran\AdminAction::class)
+                ->name('kehadiran-staff-all'),
+            Route::get('/kehadiran/admin-mth-rpt')
+                ->action(Web\Kehadiran\AdminAction::class)
+                ->name('kehadiran-admin-mth-rpt'),
+            Route::get('/kehadiran/color-rpt')
+                ->action(Web\Kehadiran\AdminAction::class)
+                ->name('kehadiran-color-rpt'),
+            Route::get('/attendance/index')
+                ->action(Web\Kehadiran\AdminAction::class)
+                ->name('attendance-index'),
+            Route::get('/kehadiran/pantau-permohonan-wfh-admin')
+                ->action(Web\Kehadiran\AdminAction::class)
+                ->name('kehadiran-pantau-permohonan-wfh-admin'),
+            Route::get('/kehadiran/wfh-jadual-admin')
+                ->action(Web\Kehadiran\AdminAction::class)
+                ->name('kehadiran-wfh-jadual-admin'),
+            Route::get('/kehadiran/statistik-wfh')
+                ->action(Web\Kehadiran\AdminAction::class)
+                ->name('kehadiran-statistik-wfh'),
+            Route::get('/kehadiran/admin-post-list')
+                ->action(Web\Kehadiran\AdminAction::class)
+                ->name('kehadiran-admin-post-list'),
+            Route::get('/attendance/absent-list-bpsm')
+                ->action(Web\Kehadiran\AdminAction::class)
+                ->name('attendance-absent-list-bpsm'),
             Route::get('/cuti/individu/index')
                 ->action(Web\Cuti\Individu\IndexAction::class)
                 ->name('cuti-individu-index'),
@@ -241,85 +295,88 @@ return [
                 ->action(Web\Cuti\Individu\FormAction::class)
                 ->name('cuti-individu-hso'),
             Route::get('/cuti/pegawai/senarai-peraku')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Pegawai\OfficerAction::class)
                 ->name('cuti-pegawai-senarai-peraku'),
             Route::get('/cuti/pegawai/senarai-lulus')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Pegawai\OfficerAction::class)
                 ->name('cuti-pegawai-senarai-lulus'),
             Route::get('/cuti/pegawai/gcr-list-checked')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Pegawai\OfficerAction::class)
                 ->name('cuti-pegawai-gcr-list-checked'),
             Route::get('/cuti/pegawai/list')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Pegawai\OfficerAction::class)
                 ->name('cuti-pegawai-list'),
             Route::get('/cuti/pegawai/staff-leave')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Pegawai\OfficerAction::class)
                 ->name('cuti-pegawai-staff-leave'),
             Route::get('/cuti/pegawai/sort')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Pegawai\OfficerAction::class)
                 ->name('cuti-pegawai-sort'),
             Route::get('/cuti/pegawai/bod-list')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Pegawai\OfficerAction::class)
                 ->name('cuti-pegawai-bod-list'),
             Route::get('/cuti/pegawai/report')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Pentadbiran\HsoAction::class)
                 ->name('cuti-pegawai-report'),
+            Route::get('/manage/list')
+                ->action(Web\Cuti\Manage\ManageAction::class)
+                ->name('manage-list'),
             Route::get('/cuti/supervisor/sick-leave-list')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Supervisor\SupervisorAction::class)
                 ->name('cuti-supervisor-sick-leave-list'),
             Route::get('/cuti/supervisor/supervised-staff')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Supervisor\SupervisorAction::class)
                 ->name('cuti-supervisor-supervised-staff'),
             Route::get('/cuti/supervisor/leave-statement-report')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Supervisor\SupervisorAction::class)
                 ->name('cuti-supervisor-leave-statement-report'),
             Route::get('/cuti/supervisor/leave-monitoring')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Supervisor\SupervisorAction::class)
                 ->name('cuti-supervisor-leave-monitoring'),
             Route::get('/cuti/supervisor/calender')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Supervisor\SupervisorAction::class)
                 ->name('cuti-supervisor-calender'),
             Route::get('/cuti/supervisor/gcr-list')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Supervisor\SupervisorAction::class)
                 ->name('cuti-supervisor-gcr-list'),
             Route::get('/cuti/supervisor/gcr-list-checked')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Supervisor\SupervisorAction::class)
                 ->name('cuti-supervisor-gcr-list-checked'),
             Route::get('/cuti/observer/my-staff')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Observer\ObserverAction::class)
                 ->name('cuti-observer-my-staff'),
             Route::get('/cuti/admin/cr2-list')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Admin\AdminAction::class)
                 ->name('cuti-admin-cr2-list'),
             Route::get('/cuti/admin/behalf-list')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Admin\AdminAction::class)
                 ->name('cuti-admin-behalf-list'),
             Route::get('/cuti/admin/access')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Admin\AdminAction::class)
                 ->name('cuti-admin-access'),
             Route::get('/cuti/admin/gcr-application-list')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Admin\AdminAction::class)
                 ->name('cuti-admin-gcr-application-list'),
             Route::get('/cuti/admin/open-application')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Admin\AdminAction::class)
                 ->name('cuti-admin-open-application'),
             Route::get('/cuti/admin/ph-list')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Admin\AdminAction::class)
                 ->name('cuti-admin-ph-list'),
             Route::get('/cuti/admin/cb-list')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Admin\AdminAction::class)
                 ->name('cuti-admin-cb-list'),
             Route::get('/cuti/admin/admin-index')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Admin\AdminAction::class)
                 ->name('cuti-admin-admin-index'),
             Route::get('/cuti/admin/staff-list')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Admin\AdminAction::class)
                 ->name('cuti-admin-staff-list'),
             Route::get('/cuti/admin/report')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Admin\AdminAction::class)
                 ->name('cuti-admin-report'),
             Route::get('/cuti/admin/report-leave-list')
-                ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
+                ->action(Web\Cuti\Admin\AdminAction::class)
                 ->name('cuti-admin-report-leave-list'),
             Route::get('/biodata/index')
                 ->action(Web\Biodata\IndexAction::class)

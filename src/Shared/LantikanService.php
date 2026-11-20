@@ -15,6 +15,7 @@ final readonly class LantikanService
         private LantikanReferenceService $references,
         private ActiveDirectoryApiClient $activeDirectory,
         private LantikanStafBaruService $stafBaruService,
+        private LantikanStafBaruTransactionService $stafBaruTransactionService,
     ) {}
 
     /**
@@ -98,6 +99,7 @@ final readonly class LantikanService
             'values' => [],
             'legacyUrl' => $this->legacyUrl($this->legacyRouteForFlow($flow)),
             'adEnabled' => $this->activeDirectory->enabled(),
+            'writeEnabled' => $flow === 'staf-baru' && $this->stafBaruTransactionService->writeEnabled(),
         ];
     }
 
@@ -149,6 +151,35 @@ final readonly class LantikanService
                 'Would call AD create only after a successful DB commit when AD is enabled.',
             ],
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
+    public function submitAppointment(string $identityId, string $flow, array $input, string $ipAddress): array
+    {
+        $icno = $this->employees->icnoFromIdentity($identityId);
+        if (!$this->canAccess($icno)) {
+            return [
+                'success' => false,
+                'mode' => 'live',
+                'values' => [],
+                'errors' => ['_form' => 'Anda tidak dibenarkan melaksanakan transaksi Lantikan.'],
+                'proposed' => [],
+            ];
+        }
+
+        if ($flow !== 'staf-baru') {
+            $result = $this->dryRunAppointment($flow, $input);
+            $result['success'] = false;
+            $result['mode'] = 'live';
+            $result['errors']['_form'] = 'Submit Yii3 untuk aliran ini belum dimigrasikan. Sila gunakan fallback Yii2.';
+
+            return $result;
+        }
+
+        return $this->stafBaruTransactionService->submit($input, $icno, $ipAddress);
     }
 
     public function suggestedEmail(string $name): string
@@ -307,6 +338,19 @@ final readonly class LantikanService
             'staff' => $staff,
             'checks' => $checks,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function stafBaruResultForIdentity(string $identityId, string $icno): ?array
+    {
+        $currentIcno = $this->employees->icnoFromIdentity($identityId);
+        if (!$this->canAccess($currentIcno) || $icno === '') {
+            return null;
+        }
+
+        return $this->stafBaruTransactionService->reconciliation($icno);
     }
 
     public function legacyUrl(string $route): string

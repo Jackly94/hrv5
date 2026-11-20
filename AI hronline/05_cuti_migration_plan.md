@@ -99,6 +99,7 @@ Recorded: 2026-11-19
 | Supervisor Menu | `[ ] Not migrated` | All top-menu routes still use Yii2 legacy fallback. |
 | Admin Menu | `[ ] Not migrated` | All top-menu routes still use Yii2 legacy fallback. |
 | Report | `[ ] Not migrated` | All report routes still use Yii2 legacy fallback. |
+| Sector HR | `[ ] Not migrated` | Old Yii2 `Manage(Surat)` route `manage/list` is not yet represented in the Yii3 Cuti menu. |
 | Pentadbiran | `[ ] Not migrated` | `Senarai Permohonan HSO` still uses Yii2 legacy fallback. |
 | Pemantau | `[ ] Not migrated` | `Senarai Kakitangan Seliaan` still uses Yii2 legacy fallback. |
 
@@ -154,6 +155,10 @@ Report:
 
 - Report by Department (Date Range)
 - Statistic by Leave Type
+
+Sector HR:
+
+- Manage(Surat)
 
 Pentadbiran:
 

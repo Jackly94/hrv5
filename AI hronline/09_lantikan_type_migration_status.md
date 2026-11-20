@@ -22,7 +22,7 @@ Purpose: quick continuation record for the Lantikan module. Use this to decide t
 | Workflow / Type | Old Yii2 route | Current Yii3 route/status | Migration status | Notes / next task |
 | --- | --- | --- | --- | --- |
 | Lantikan dashboard | `lantikan/index` | `/lantikan/index` | Migrated | Local Yii3 landing page is the default from menu. |
-| Staf Baru | `lantikan/lantik-staf-baru` | `/lantikan/lantik-staf-baru` | Partial | Yii3 form, validation, AD email find check, and insert-plan dry-run exist. Live submit is not enabled. Continue `STAFBARU-06` onward. |
+| Staf Baru | `lantikan/lantik-staf-baru` | `/lantikan/lantik-staf-baru` plus `/lantikan/lantik-staf-baru/result` | Partial | Yii3 form, validation, AD email find check, insert-plan dry-run, feature-flagged transaction service, UMSPER advisory lock implementation, and reconciliation page exist. Live submit remains off by default and still needs AD-enabled dummy/UAT write verification before cutover. |
 | PHS | `lantikan/lantik-phs` | User-facing tile opens live Yii2. Local generic dry-run route exists if opened directly. | Legacy / Partial scaffold | Needs full Yii2 source mapping and transaction service after Staf Baru pattern is proven. Main task: `LANTIKAN-10`. |
 | Khas | `lantikan/lantik-khas` | User-facing tile opens live Yii2. Local generic dry-run route exists if opened directly. | Legacy / Partial scaffold | Needs full Yii2 source mapping and transaction service. Main task: `LANTIKAN-11`. |
 | SPDP | `lantikan/lantik-spdp` | User-facing tile opens live Yii2. Local generic dry-run route exists if opened directly. | Legacy / Partial scaffold | Needs SPDP-specific defaults/fields and transaction service. Main task: `LANTIKAN-09`. |
@@ -45,8 +45,10 @@ Purpose: quick continuation record for the Lantikan module. Use this to decide t
 
 ## Recommended Next Order
 
-- [ ] Finish Staf Baru live core transaction: `STAFBARU-06`.
-- [ ] Add UMSPER advisory lock: `STAFBARU-07`.
+- Detailed continuation plan: `AI hronline/10_lantikan_pending_migration_execution_plan.md`.
+- Open blocker register: `AI hronline/10_lantikan_pending_migration_execution_plan.md#blocker-register`.
+- [ ] Verify Staf Baru live core transaction with approved dummy/UAT data: `STAFBARU-06`.
+- [ ] Verify UMSPER advisory lock under live/concurrency test: `STAFBARU-07`.
 - [ ] Add AD create post-commit handling: `STAFBARU-08`.
 - [ ] Resolve IdP and cross-module side effects: `STAFBARU-09` and `STAFBARU-10`.
 - [ ] Enable Staf Baru submit behind feature flag: `STAFBARU-11`.

@@ -102,6 +102,14 @@ final readonly class CutiAccessService
         );
     }
 
+    public function isSectorHrUser(string $icno): bool
+    {
+        return $this->exists(
+            'SELECT 1 FROM system_core.tbl_user_access WHERE icno = :icno LIMIT 1',
+            [':icno' => $icno],
+        );
+    }
+
     /**
      * @return array<string, bool>
      */
@@ -118,6 +126,7 @@ final readonly class CutiAccessService
             'departmentChiefOrPp' => $this->isDepartmentChiefOrPp($icno),
             'gcrVisible' => $this->isGcrApplicationVisible($icno),
             'permanentStaff' => $this->isPermanentStaff($icno),
+            'sectorHr' => $this->isSectorHrUser($icno),
         ];
     }
 

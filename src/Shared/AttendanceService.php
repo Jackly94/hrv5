@@ -700,7 +700,7 @@ final readonly class AttendanceService
             'entryDate' => $this->value($row['entry_dt'] ?? null),
             'approvalDate' => $this->value($row['app_dt'] ?? null),
             'status' => $this->value($row['status'] ?? null),
-            'deleteUrl' => self::LEGACY_BASE . '/kehadiran/delete-wfh?id=' . rawurlencode((string) ($row['id'] ?? '')),
+            'deleteUrl' => '/kehadiran/delete-wfh?id=' . rawurlencode((string) ($row['id'] ?? '')),
         ]);
     }
 
@@ -735,7 +735,7 @@ final readonly class AttendanceService
             'remark' => $this->value($row['remark'] ?? null),
             'entryDate' => $this->value($row['entry_dt'] ?? null),
             'status' => $this->value($row['status'] ?? null),
-            'actionUrl' => self::LEGACY_BASE . '/kehadiran/wfh-lulus-tindakan?id=' . rawurlencode((string) ($row['id'] ?? '')),
+            'actionUrl' => '/kehadiran/wfh-lulus-tindakan?id=' . rawurlencode((string) ($row['id'] ?? '')),
         ]);
     }
 
@@ -775,7 +775,7 @@ final readonly class AttendanceService
                 'statusLabels' => $this->statusLabels($row),
                 'leaveOutstation' => $date === '' ? [] : ($tags[$date] ?? []),
                 'remark' => $this->value($row['remark'] ?? null),
-                'actionUrl' => self::LEGACY_BASE . '/kehadiran/pengesahan?id=' . rawurlencode((string) ($row['id'] ?? '')),
+                'actionUrl' => '/kehadiran/pengesahan?id=' . rawurlencode((string) ($row['id'] ?? '')),
             ];
         });
     }
@@ -1483,7 +1483,7 @@ final readonly class AttendanceService
             'entryDate' => $this->value($row['entry_dt'] ?? null),
             'approvalDate' => $this->value($row['app_dt'] ?? null),
             'status' => $this->value($row['status'] ?? null),
-            'deleteUrl' => self::LEGACY_BASE . '/kehadiran/delete-wfh?id=' . rawurlencode((string) ($row['id'] ?? '')),
+            'deleteUrl' => '/kehadiran/delete-wfh?id=' . rawurlencode((string) ($row['id'] ?? '')),
         ]);
     }
 
@@ -1527,10 +1527,834 @@ final readonly class AttendanceService
                     'entryDate' => $this->value($row['date_entered'] ?? null),
                     'verifierRemark' => $this->value($row['remark_verifier'] ?? null),
                     'approverRemark' => $this->value($row['remark_approver'] ?? null),
-                    'actionUrl' => self::LEGACY_BASE . '/kehadiran/verify-thtc-sv?id=' . rawurlencode((string) ($row['id'] ?? '')),
+                    'actionUrl' => '/kehadiran/verify-thtc-sv?id=' . rawurlencode((string) ($row['id'] ?? '')),
                 ];
             }),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function departmentChiefScope(string $icno): array
+    {
+        $row = $this->db->createCommand(
+            <<<SQL
+            SELECT dept.id, dept.fullname, dept.shortname
+            FROM hronline.department dept
+            WHERE dept.chief = :icno
+              AND dept.isActive = 1
+            LIMIT 1
+            SQL,
+            [':icno' => $icno],
+        )->queryOne();
+
+        if (!is_array($row)) {
+            return ['authorized' => false, 'department' => null];
+        }
+
+        return [
+            'authorized' => true,
+            'department' => [
+                'id' => (int) ($row['id'] ?? 0),
+                'name' => $this->value($row['fullname'] ?? null),
+                'shortName' => $this->value($row['shortname'] ?? null),
+            ],
+        ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function departmentChiefStaff(string $icno): array
+    {
+        $scope = $this->departmentChiefScope($icno);
+        if (!(bool) $scope['authorized']) {
+            return [];
+        }
+
+        $department = $scope['department'];
+        $rows = $this->db->createCommand(
+            <<<SQL
+            SELECT staff.ICNO, staff.CONm, staff.COOldID, staff.DeptId, staff.campus_id,
+                   dept.fullname AS department_name, dept.shortname AS department_shortname,
+                   campus.campus_name, job.fname AS position_name, job.gred AS job_grade
+            FROM hronline.tblprcobiodata staff
+            LEFT JOIN hronline.department dept ON dept.id = staff.DeptId
+            LEFT JOIN hronline.campus campus ON campus.campus_id = staff.campus_id
+            LEFT JOIN hronline.gredjawatan job ON job.id = staff.gredJawatan
+            WHERE staff.Status = 1
+              AND staff.DeptId = :dept
+            ORDER BY staff.CONm ASC
+            LIMIT 1000
+            SQL,
+            [':dept' => (int) ($department['id'] ?? 0)],
+        )->queryAll();
+
+        return $this->mapRows($rows, fn (array $row): array => $this->mapStaffRow($row));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function departmentChiefDailyAttendance(string $icno, string $date): array
+    {
+        $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) === 1 ? $date : (new DateTimeImmutable('today'))->format('Y-m-d');
+        $staff = $this->departmentChiefStaff($icno);
+        $records = $this->recordsForStaffDate($this->staffIcnoList($staff), $date);
+        $rows = [];
+
+        foreach ($staff as $person) {
+            $record = $records[(string) $person['icno']] ?? null;
+            $tags = $this->dateTags((string) $person['icno'], new DateTimeImmutable($date), new DateTimeImmutable($date), (int) $person['campusId']);
+            $wbb = $record === null
+                ? $this->value(($this->currentWorkingPattern((string) $person['icno'])['label'] ?? null), '-')
+                : $this->value($record['jenis_wp'] ?? null);
+
+            $rows[] = [
+                'staff' => $person,
+                'wbb' => $wbb,
+                'timeIn' => $record === null ? '-' : $this->formatTime($record['time_in'] ?? null),
+                'timeOut' => $record === null ? '-' : $this->formatTime($record['time_out'] ?? null),
+                'leaveOutstation' => $tags[$date] ?? [],
+                'statusLabels' => $record === null ? [] : $this->statusLabels($record),
+                'locations' => $record === null ? [] : $this->locationLinks($record),
+                'detailUrl' => $record === null ? '' : self::LEGACY_BASE . '/kehadiran/detailrekod?icno=' . rawurlencode((string) $person['icno']) . '&tarikh=' . rawurlencode($date),
+                'reportUrl' => self::LEGACY_BASE . '/kehadiran/laporan_kehadiran?id=' . rawurlencode((string) $person['icno']),
+                'historyUrl' => self::LEGACY_BASE . '/kehadiran/staff_history?icno=' . rawurlencode((string) $person['icno']),
+            ];
+        }
+
+        return [
+            'scope' => $this->departmentChiefScope($icno),
+            'date' => $date,
+            'dateLabel' => $this->formatDate($date),
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function departmentChiefWfhSchedule(string $icno, int $month, int $year): array
+    {
+        $month = max(1, min(12, $month));
+        $staff = $this->departmentChiefStaff($icno);
+        $icnos = $this->staffIcnoList($staff);
+        $start = new DateTimeImmutable(sprintf('%04d-%02d-01', $year, $month));
+        $end = $start->modify('last day of this month');
+        $wfhDays = $this->wfhDaysFor($icnos, $start->format('Y-m-d'), $end->format('Y-m-d'));
+        $days = [];
+        $rows = [];
+
+        $cursor = $start;
+        while ($cursor <= $end) {
+            $days[] = [
+                'date' => $cursor->format('Y-m-d'),
+                'day' => $cursor->format('d'),
+                'weekday' => $cursor->format('D'),
+            ];
+            $cursor = $cursor->modify('+1 day');
+        }
+
+        foreach ($staff as $person) {
+            $cells = [];
+            foreach ($days as $day) {
+                $cells[] = [
+                    'date' => $day['date'],
+                    'status' => isset($wfhDays[(string) $person['icno']][$day['date']]) ? 'WFH' : 'WFO',
+                ];
+            }
+            $rows[] = ['staff' => $person, 'cells' => $cells];
+        }
+
+        return [
+            'scope' => $this->departmentChiefScope($icno),
+            'month' => $month,
+            'monthName' => $this->monthName($month),
+            'year' => $year,
+            'days' => $days,
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function departmentChiefThtcList(string $icno): array
+    {
+        $scope = $this->departmentChiefScope($icno);
+        if (!(bool) $scope['authorized']) {
+            return ['scope' => $scope, 'rows' => []];
+        }
+
+        $rows = $this->db->createCommand(
+            <<<SQL
+            SELECT thtc.id, thtc.icno, thtc.remark, thtc.date_entered, thtc.supporting_doc,
+                   thtc.status, thtc.remark_verifier, thtc.remark_approver,
+                   r.tarikh, r.day, r.remark AS absent_remark,
+                   staff.CONm AS staff_name, dept.shortname AS department_shortname
+            FROM attendance.tbl_thtc thtc
+            LEFT JOIN attendance.tbl_rekod r ON r.id = thtc.tbl_rekod_id
+            LEFT JOIN hronline.tblprcobiodata staff ON staff.ICNO = thtc.icno
+            LEFT JOIN hronline.department dept ON dept.id = staff.DeptId
+            WHERE thtc.icno_approver LIKE :icno
+              AND thtc.status <> 6
+            ORDER BY r.tarikh DESC, thtc.date_entered DESC
+            LIMIT 1000
+            SQL,
+            [':icno' => '%' . $icno . '%'],
+        )->queryAll();
+
+        return [
+            'scope' => $scope,
+            'rows' => $this->mapRows($rows, function (array $row): array {
+                $doc = $this->value($row['supporting_doc'] ?? null, '');
+
+                return [
+                    'id' => (string) ($row['id'] ?? ''),
+                    'staffName' => $this->employees->displayName($row['staff_name'] ?? null),
+                    'department' => $this->value($row['department_shortname'] ?? null),
+                    'date' => $this->formatDate($row['tarikh'] ?? null),
+                    'day' => $this->value($row['day'] ?? null),
+                    'absentRemark' => $this->value($row['absent_remark'] ?? null),
+                    'remark' => $this->value($row['remark'] ?? null),
+                    'documentUrl' => $doc !== '' && $doc !== 'deleted' ? 'https://mediahost.ums.edu.my/api/v1/viewFile/' . rawurlencode($doc) : '',
+                    'status' => $this->thtcStatus((int) ($row['status'] ?? 0)),
+                    'entryDate' => $this->value($row['date_entered'] ?? null),
+                    'verifierRemark' => $this->value($row['remark_verifier'] ?? null),
+                    'approverRemark' => $this->value($row['remark_approver'] ?? null),
+                    'actionUrl' => '/kehadiran/approve-thtc?id=' . rawurlencode((string) ($row['id'] ?? '')),
+                ];
+            }),
+        ];
+    }
+
+    public function isAdministrator(string $icno): bool
+    {
+        return $this->hasAccess($icno, 3);
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     */
+    public function administratorStaffList(string $icno, array $filters = []): array
+    {
+        if (!$this->isAdministrator($icno)) {
+            return ['authorized' => false, 'filters' => $filters, 'rows' => []];
+        }
+
+        return [
+            'authorized' => true,
+            'filters' => $filters,
+            'rows' => $this->supervisorStaff($icno, $filters),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function administratorRawAttendance(string $icno, array $filters = []): array
+    {
+        if (!$this->isAdministrator($icno)) {
+            return ['authorized' => false, 'filters' => $filters, 'rows' => []];
+        }
+
+        $params = [];
+        $where = ['1 = 1'];
+        $date = trim((string) ($filters['date'] ?? ''));
+        $search = trim((string) ($filters['q'] ?? ''));
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) === 1) {
+            $where[] = 'r.tarikh = :date';
+            $params[':date'] = $date;
+        } else {
+            $where[] = 'r.tarikh >= :date';
+            $params[':date'] = (new DateTimeImmutable('today'))->modify('-7 days')->format('Y-m-d');
+        }
+        if ($search !== '') {
+            $where[] = '(staff.CONm LIKE :search OR staff.COOldID LIKE :search OR r.icno LIKE :search)';
+            $params[':search'] = '%' . $search . '%';
+        }
+
+        $rows = $this->db->createCommand(
+            sprintf(
+                <<<SQL
+                SELECT r.id, r.icno, r.tarikh, r.day, r.time_in, r.time_out, r.remark_status,
+                       r.late_in, r.early_out, r.incomplete, r.absent, r.external, r.external_out,
+                       staff.CONm AS staff_name, dept.shortname AS department_shortname, ref.jenis_wp
+                FROM attendance.tbl_rekod r
+                LEFT JOIN hronline.tblprcobiodata staff ON staff.ICNO = r.icno
+                LEFT JOIN hronline.department dept ON dept.id = staff.DeptId
+                LEFT JOIN attendance.ref_wp ref ON ref.id = r.wp_id
+                WHERE %s
+                ORDER BY r.tarikh DESC, staff.CONm ASC
+                LIMIT 1000
+                SQL,
+                implode(' AND ', $where),
+            ),
+            $params,
+        )->queryAll();
+
+        return [
+            'authorized' => true,
+            'filters' => $filters,
+            'rows' => $this->mapRows($rows, fn (array $row): array => [
+                'id' => (string) ($row['id'] ?? ''),
+                'staffName' => $this->employees->displayName($row['staff_name'] ?? null),
+                'icno' => $this->value($row['icno'] ?? null),
+                'department' => $this->value($row['department_shortname'] ?? null),
+                'date' => $this->formatDate($row['tarikh'] ?? null),
+                'day' => $this->value($row['day'] ?? null),
+                'wbb' => $this->value($row['jenis_wp'] ?? null),
+                'timeIn' => $this->formatTime($row['time_in'] ?? null),
+                'timeOut' => $this->formatTime($row['time_out'] ?? null),
+                'statusLabels' => $this->statusLabels($row),
+                'remarkStatus' => $this->value($row['remark_status'] ?? null),
+                'detailUrl' => self::LEGACY_BASE . '/attendance/view?id=' . rawurlencode((string) ($row['id'] ?? '')),
+            ]),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function administratorWarningLetters(string $icno, int $month, int $year, string $color): array
+    {
+        if (!$this->isAdministrator($icno)) {
+            return ['authorized' => false, 'month' => $month, 'year' => $year, 'color' => $color, 'rows' => []];
+        }
+
+        $month = max(1, min(12, $month));
+        $color = strtoupper($color);
+        if (!in_array($color, ['RED', 'YELLOW', 'GREEN'], true)) {
+            $color = 'RED';
+        }
+
+        $rows = $this->db->createCommand(
+            <<<SQL
+            SELECT card.id, card.icno, card.month_date, card.ketidakpatuhan, card.approved,
+                   card.disapproved, card.color, staff.CONm AS staff_name,
+                   dept.shortname AS department_shortname, job.gred AS job_grade
+            FROM attendance.tbl_warnakad card
+            INNER JOIN hronline.tblprcobiodata staff ON staff.ICNO = card.icno
+            LEFT JOIN hronline.department dept ON dept.id = staff.DeptId
+            LEFT JOIN hronline.gredjawatan job ON job.id = staff.gredJawatan
+            WHERE MONTH(card.month_date) = :month
+              AND YEAR(card.month_date) = :year
+              AND UPPER(card.color) = :color
+              AND COALESCE(job.gred_skim, '') NOT IN ('KP')
+            ORDER BY staff.DeptId, staff.CONm
+            LIMIT 1000
+            SQL,
+            [':month' => $month, ':year' => $year, ':color' => $color],
+        )->queryAll();
+
+        return [
+            'authorized' => true,
+            'month' => $month,
+            'monthName' => $this->monthName($month),
+            'year' => $year,
+            'color' => $color,
+            'rows' => $this->mapRows($rows, fn (array $row): array => [
+                'id' => (string) ($row['id'] ?? ''),
+                'staffName' => $this->employees->displayName($row['staff_name'] ?? null),
+                'icno' => $this->value($row['icno'] ?? null),
+                'grade' => $this->value($row['job_grade'] ?? null),
+                'department' => $this->value($row['department_shortname'] ?? null),
+                'nonCompliance' => (int) ($row['ketidakpatuhan'] ?? 0),
+                'approved' => (int) ($row['approved'] ?? 0),
+                'disapproved' => (int) ($row['disapproved'] ?? 0),
+                'color' => strtoupper($this->value($row['color'] ?? null, '-')),
+            ]),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function administratorWfhStatistics(string $icno, array $filters = []): array
+    {
+        if (!$this->isAdministrator($icno)) {
+            return ['authorized' => false, 'filters' => $filters, 'rows' => [], 'totalStaff' => 0];
+        }
+
+        $params = [];
+        $where = [];
+        $date = trim((string) ($filters['date'] ?? ''));
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) === 1) {
+            $where[] = 'Tarikh = :date';
+            $params[':date'] = $date;
+        } elseif (
+            trim((string) ($filters['department'] ?? '')) === ''
+            && !is_numeric($filters['month'] ?? null)
+            && !is_numeric($filters['year'] ?? null)
+        ) {
+            $where[] = 'Tarikh = :date';
+            $params[':date'] = (new DateTimeImmutable('today'))->format('Y-m-d');
+        }
+
+        $department = trim((string) ($filters['department'] ?? ''));
+        if ($department !== '') {
+            $where[] = 'Nama_Penuh_Jabatan LIKE :department';
+            $params[':department'] = '%' . $department . '%';
+        }
+        if (is_numeric($filters['month'] ?? null)) {
+            $where[] = 'Bulan = :month';
+            $params[':month'] = (int) $filters['month'];
+        }
+        if (is_numeric($filters['year'] ?? null)) {
+            $where[] = 'Tahun = :year';
+            $params[':year'] = (int) $filters['year'];
+        }
+
+        $rows = $this->db->createCommand(
+            sprintf(
+                'SELECT Tarikh, Bulan, Tahun, Nama_Jabatan, Nama_Penuh_Jabatan, Bilangan FROM attendance.vw_statistik_wfh WHERE %s ORDER BY Tarikh DESC, Nama_Penuh_Jabatan ASC LIMIT 1000',
+                $where === [] ? '1 = 1' : implode(' AND ', $where),
+            ),
+            $params,
+        )->queryAll();
+
+        $mapped = $this->mapRows($rows, fn (array $row): array => [
+            'date' => $this->formatDate($row['Tarikh'] ?? null),
+            'month' => $this->value($row['Bulan'] ?? null),
+            'year' => $this->value($row['Tahun'] ?? null),
+            'departmentShort' => $this->value($row['Nama_Jabatan'] ?? null),
+            'department' => $this->value($row['Nama_Penuh_Jabatan'] ?? null),
+            'total' => (int) ($row['Bilangan'] ?? 0),
+        ]);
+
+        return [
+            'authorized' => true,
+            'filters' => $filters,
+            'rows' => $mapped,
+            'totalStaff' => array_sum(array_map(static fn (array $row): int => (int) $row['total'], $mapped)),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function administratorThtcBpsmOverview(string $icno, array $filters = []): array
+    {
+        if (!$this->isAdministrator($icno)) {
+            return ['authorized' => false, 'filters' => $filters, 'rows' => []];
+        }
+
+        $params = [':start' => '2025-01-01'];
+        $where = ['r.tarikh >= :start', 'thtc.status <> 6'];
+        $search = trim((string) ($filters['q'] ?? ''));
+        if ($search !== '') {
+            $where[] = '(staff.CONm LIKE :search OR staff.ICNO LIKE :search)';
+            $params[':search'] = '%' . $search . '%';
+        }
+        if (is_numeric($filters['deptId'] ?? null) && (int) $filters['deptId'] > 0) {
+            $where[] = 'dept.id = :dept';
+            $params[':dept'] = (int) $filters['deptId'];
+        }
+        if (is_numeric($filters['status'] ?? null) && (int) $filters['status'] > 0) {
+            $where[] = 'thtc.status = :status';
+            $params[':status'] = (int) $filters['status'];
+        }
+
+        $rows = $this->db->createCommand(
+            sprintf(
+                <<<SQL
+                SELECT thtc.icno, MAX(thtc.id) AS id, COUNT(*) AS total_records,
+                       MAX(thtc.status) AS latest_status, MAX(r.tarikh) AS latest_date,
+                       staff.CONm AS staff_name, dept.fullname AS department_name, dept.shortname AS department_shortname
+                FROM attendance.tbl_thtc thtc
+                LEFT JOIN attendance.tbl_rekod r ON r.id = thtc.tbl_rekod_id
+                LEFT JOIN hronline.tblprcobiodata staff ON staff.ICNO = thtc.icno
+                LEFT JOIN hronline.department dept ON dept.id = staff.DeptId
+                WHERE %s
+                GROUP BY thtc.icno, staff.CONm, dept.fullname, dept.shortname
+                ORDER BY latest_date DESC, staff.CONm ASC
+                LIMIT 1000
+                SQL,
+                implode(' AND ', $where),
+            ),
+            $params,
+        )->queryAll();
+
+        return [
+            'authorized' => true,
+            'filters' => $filters,
+            'departments' => $this->supervisorDepartmentOptions(true, []),
+            'rows' => $this->mapRows($rows, fn (array $row): array => [
+                'id' => (string) ($row['id'] ?? ''),
+                'icno' => $this->value($row['icno'] ?? null),
+                'staffName' => $this->employees->displayName($row['staff_name'] ?? null),
+                'department' => $this->value($row['department_name'] ?? null, $this->value($row['department_shortname'] ?? null)),
+                'latestDate' => $this->formatDate($row['latest_date'] ?? null),
+                'status' => $this->thtcStatus((int) ($row['latest_status'] ?? 0)),
+                'totalRecords' => (int) ($row['total_records'] ?? 0),
+                'detailUrl' => self::LEGACY_BASE . '/attendance/list-bpsm?icno=' . rawurlencode((string) ($row['icno'] ?? '')),
+            ]),
+        ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function administratorWfhApplications(string $icno, array $filters = []): array
+    {
+        if (!$this->isAdministrator($icno)) {
+            return [];
+        }
+
+        $params = [];
+        $where = ['YEAR(wfh.start_date) > 2021', "wfh.remark NOT LIKE '%ADDED BY PENYELIA%'"];
+        $status = strtoupper(trim((string) ($filters['status'] ?? '')));
+        if (in_array($status, ['ENTRY', 'APPROVED', 'REJECTED', 'VERIFIED'], true)) {
+            $where[] = 'wfh.status = :status';
+            $params[':status'] = $status;
+        }
+        $search = trim((string) ($filters['q'] ?? ''));
+        if ($search !== '') {
+            $where[] = '(staff.CONm LIKE :search OR wfh.remark LIKE :search OR wfh.full_date LIKE :search)';
+            $params[':search'] = '%' . $search . '%';
+        }
+
+        $rows = $this->db->createCommand(
+            sprintf(
+                <<<SQL
+                SELECT wfh.id, wfh.icno, wfh.full_date, wfh.start_date, wfh.end_date, wfh.tempoh,
+                       wfh.remark, wfh.entry_dt, wfh.app_dt, wfh.status,
+                       staff.CONm AS staff_name, dept.shortname AS department_shortname, job.gred AS job_grade
+                FROM attendance.tbl_wfh wfh
+                LEFT JOIN hronline.tblprcobiodata staff ON staff.ICNO = wfh.icno
+                LEFT JOIN hronline.department dept ON dept.id = staff.DeptId
+                LEFT JOIN hronline.gredjawatan job ON job.id = staff.gredJawatan
+                WHERE %s
+                ORDER BY wfh.entry_dt DESC
+                LIMIT 1000
+                SQL,
+                implode(' AND ', $where),
+            ),
+            $params,
+        )->queryAll();
+
+        return $this->mapRows($rows, fn (array $row): array => [
+            'id' => (string) ($row['id'] ?? ''),
+            'staffName' => $this->employees->displayName($row['staff_name'] ?? null),
+            'icno' => $this->value($row['icno'] ?? null),
+            'grade' => $this->value($row['job_grade'] ?? null),
+            'department' => $this->value($row['department_shortname'] ?? null),
+            'date' => $this->value($row['full_date'] ?? null, $this->dateRangeText($row['start_date'] ?? null, $row['end_date'] ?? null)),
+            'period' => $this->value($row['tempoh'] ?? null),
+            'remark' => $this->value($row['remark'] ?? null),
+            'entryDate' => $this->value($row['entry_dt'] ?? null),
+            'approvalDate' => $this->value($row['app_dt'] ?? null),
+            'status' => $this->value($row['status'] ?? null),
+            'deleteUrl' => '/kehadiran/delete-wfh?id=' . rawurlencode((string) ($row['id'] ?? '')),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function administratorAdminPostList(string $icno, array $filters = []): array
+    {
+        if (!$this->isAdministrator($icno)) {
+            return ['authorized' => false, 'filters' => $filters, 'rows' => []];
+        }
+
+        $params = [];
+        $where = ['post.flag = 1', 'staff.Status = 1', 'position.position_type = 1'];
+        $search = trim((string) ($filters['q'] ?? ''));
+        if ($search !== '') {
+            $where[] = '(staff.CONm LIKE :search OR position.position_name LIKE :search OR post.description LIKE :search OR dept.shortname LIKE :search)';
+            $params[':search'] = '%' . $search . '%';
+        }
+
+        $rows = $this->db->createCommand(
+            sprintf(
+                <<<SQL
+                SELECT post.id, post.ICNO, post.description, post.start_date, post.end_date,
+                       staff.CONm AS staff_name, dept.shortname AS department_shortname,
+                       position.position_name
+                FROM hronline.tblrscoadminpost post
+                INNER JOIN hronline.adminposition position ON position.id = post.adminpos_id
+                LEFT JOIN hronline.tblprcobiodata staff ON staff.ICNO = post.ICNO
+                LEFT JOIN hronline.department dept ON dept.id = post.dept_id
+                WHERE %s
+                ORDER BY staff.CONm ASC
+                LIMIT 1000
+                SQL,
+                implode(' AND ', $where),
+            ),
+            $params,
+        )->queryAll();
+
+        return [
+            'authorized' => true,
+            'filters' => $filters,
+            'rows' => $this->mapRows($rows, fn (array $row): array => [
+                'id' => (string) ($row['id'] ?? ''),
+                'staffName' => $this->employees->displayName($row['staff_name'] ?? null),
+                'icno' => $this->value($row['ICNO'] ?? null),
+                'position' => $this->value($row['position_name'] ?? null),
+                'description' => $this->value($row['description'] ?? null),
+                'department' => $this->value($row['department_shortname'] ?? null),
+                'startDate' => $this->formatDate($row['start_date'] ?? null),
+                'endDate' => $this->formatDate($row['end_date'] ?? null),
+            ]),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function attendanceReasonApproval(string $icno, int $id): ?array
+    {
+        $row = $this->db->createCommand(
+            <<<SQL
+            SELECT r.id, r.icno, r.tarikh, r.day, r.time_in, r.time_out, r.remark,
+                   r.remark_status, r.app_remark, r.late_in, r.early_out, r.incomplete,
+                   r.absent, r.external, r.external_out, staff.CONm AS staff_name,
+                   dept.shortname AS department_shortname, ref.jenis_wp
+            FROM attendance.tbl_rekod r
+            LEFT JOIN hronline.tblprcobiodata staff ON staff.ICNO = r.icno
+            LEFT JOIN hronline.department dept ON dept.id = staff.DeptId
+            LEFT JOIN attendance.ref_wp ref ON ref.id = r.wp_id
+            WHERE r.id = :id
+              AND r.app_by = :icno
+              AND r.remark_status = 'ENTRY'
+            LIMIT 1
+            SQL,
+            [':id' => $id, ':icno' => $this->approvalIdentity($icno)],
+        )->queryOne();
+
+        return is_array($row) ? $this->mapAttendanceReasonApproval($row) : null;
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array{success: bool, message: string}
+     */
+    public function saveAttendanceReasonApproval(string $icno, int $id, array $input): array
+    {
+        $approvalIcno = $this->approvalIdentity($icno);
+        $record = $this->attendanceReasonApproval($icno, $id);
+        if ($record === null) {
+            return ['success' => false, 'message' => 'Rekod pengesahan tidak dijumpai atau sudah selesai.'];
+        }
+
+        $status = strtoupper(trim((string) ($input['status'] ?? '')));
+        if (!in_array($status, ['APPROVED', 'REJECTED'], true)) {
+            return ['success' => false, 'message' => 'Status pengesahan diperlukan.'];
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $remark = trim((string) ($input['remark'] ?? ''));
+        $updated = (int) $this->db->transaction(fn (): int => $this->db->createCommand()->update('attendance.tbl_rekod', [
+            'remark_status' => $status,
+            'app_remark' => $remark,
+            'app_dt' => $now,
+        ], [
+            'id' => $id,
+            'app_by' => $approvalIcno,
+            'remark_status' => 'ENTRY',
+        ])->execute());
+
+        if ($updated < 1) {
+            return ['success' => false, 'message' => 'Rekod tidak dikemaskini.'];
+        }
+
+        $this->notify(
+            (string) $record['icno'],
+            'Kehadiran',
+            'Status pengesahan Ketidakpatuhan pada ' . (string) $record['date'] . ' telah disahkan.',
+            $now,
+        );
+        $this->refreshPendingTask($approvalIcno, null);
+
+        return ['success' => true, 'message' => 'Pengesahan ketidakpatuhan telah dihantar.'];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function wfhApproval(string $icno, int $id): ?array
+    {
+        $row = $this->db->createCommand(
+            <<<SQL
+            SELECT wfh.id, wfh.icno, wfh.full_date, wfh.start_date, wfh.end_date, wfh.tempoh,
+                   wfh.remark, wfh.entry_dt, wfh.status, wfh.app_remark, wfh.doc_name, wfh.hashcode,
+                   staff.CONm AS staff_name, dept.shortname AS department_shortname, job.gred AS job_grade
+            FROM attendance.tbl_wfh wfh
+            LEFT JOIN hronline.tblprcobiodata staff ON staff.ICNO = wfh.icno
+            LEFT JOIN hronline.department dept ON dept.id = staff.DeptId
+            LEFT JOIN hronline.gredjawatan job ON job.id = staff.gredJawatan
+            WHERE wfh.id = :id
+              AND wfh.app_by = :icno
+              AND wfh.status = 'ENTRY'
+            LIMIT 1
+            SQL,
+            [':id' => $id, ':icno' => $icno],
+        )->queryOne();
+
+        return is_array($row) ? $this->mapWfhActionRow($row) : null;
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array{success: bool, message: string}
+     */
+    public function saveWfhApproval(string $icno, int $id, array $input): array
+    {
+        $record = $this->wfhApproval($icno, $id);
+        if ($record === null) {
+            return ['success' => false, 'message' => 'Permohonan WFH tidak dijumpai atau sudah selesai.'];
+        }
+
+        $status = strtoupper(trim((string) ($input['status'] ?? '')));
+        if (!in_array($status, ['APPROVED', 'REJECTED'], true)) {
+            return ['success' => false, 'message' => 'Status kelulusan diperlukan.'];
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $remark = trim((string) ($input['remark'] ?? ''));
+        $updated = (int) $this->db->transaction(fn (): int => $this->db->createCommand()->update('attendance.tbl_wfh', [
+            'status' => $status,
+            'app_remark' => $remark,
+            'app_dt' => $now,
+        ], [
+            'id' => $id,
+            'app_by' => $icno,
+            'status' => 'ENTRY',
+        ])->execute());
+
+        if ($updated < 1) {
+            return ['success' => false, 'message' => 'Permohonan WFH tidak dikemaskini.'];
+        }
+
+        $message = $status === 'APPROVED'
+            ? 'Permohonan bekerja dari rumah / Work from Home (WFH) pada ' . (string) $record['date'] . ' telah diluluskan.'
+            : 'Permohonan bekerja dari rumah / Work from Home (WFH) pada ' . (string) $record['date'] . ' ditolak.';
+        $this->notify((string) $record['icno'], 'WFH', $message, $now);
+
+        return ['success' => true, 'message' => 'Kelulusan permohonan WFH telah dihantar.'];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function wfhDeleteRecord(string $icno, int $id): ?array
+    {
+        $row = $this->db->createCommand(
+            <<<SQL
+            SELECT wfh.id, wfh.icno, wfh.full_date, wfh.start_date, wfh.end_date, wfh.tempoh,
+                   wfh.remark, wfh.entry_dt, wfh.status, wfh.app_by, wfh.ver_by, wfh.set_by,
+                   staff.CONm AS staff_name, dept.shortname AS department_shortname, job.gred AS job_grade
+            FROM attendance.tbl_wfh wfh
+            LEFT JOIN hronline.tblprcobiodata staff ON staff.ICNO = wfh.icno
+            LEFT JOIN hronline.department dept ON dept.id = staff.DeptId
+            LEFT JOIN hronline.gredjawatan job ON job.id = staff.gredJawatan
+            WHERE wfh.id = :id
+            LIMIT 1
+            SQL,
+            [':id' => $id],
+        )->queryOne();
+
+        if (!is_array($row) || !$this->canManageWfh($icno, $row)) {
+            return null;
+        }
+
+        return $this->mapWfhActionRow($row);
+    }
+
+    /**
+     * @return array{success: bool, message: string}
+     */
+    public function deleteWfh(string $icno, int $id): array
+    {
+        $record = $this->wfhDeleteRecord($icno, $id);
+        if ($record === null) {
+            return ['success' => false, 'message' => 'Permohonan WFH tidak dijumpai atau tiada akses.'];
+        }
+
+        $deleted = (int) $this->db->transaction(fn (): int => $this->db->createCommand()->delete('attendance.tbl_wfh', ['id' => $id])->execute());
+        if ($deleted < 1) {
+            return ['success' => false, 'message' => 'Permohonan WFH tidak dipadam.'];
+        }
+
+        return ['success' => true, 'message' => 'Permohonan WFH telah dipadam.'];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function thtcReview(string $icno, int $id, string $stage): ?array
+    {
+        $stage = $stage === 'approve' ? 'approve' : 'verify';
+        $expectedStatus = $stage === 'approve' ? 2 : 1;
+        $row = $this->db->createCommand(
+            <<<SQL
+            SELECT thtc.id, thtc.icno, thtc.remark, thtc.date_entered, thtc.supporting_doc,
+                   thtc.status, thtc.icno_verifier, thtc.remark_verifier, thtc.dt_entered_verifier,
+                   thtc.icno_approver, thtc.remark_approver, thtc.dt_entered_approver,
+                   r.tarikh, r.day, r.remark AS absent_remark,
+                   staff.CONm AS staff_name, dept.shortname AS department_shortname
+            FROM attendance.tbl_thtc thtc
+            LEFT JOIN attendance.tbl_rekod r ON r.id = thtc.tbl_rekod_id
+            LEFT JOIN hronline.tblprcobiodata staff ON staff.ICNO = thtc.icno
+            LEFT JOIN hronline.department dept ON dept.id = staff.DeptId
+            WHERE thtc.id = :id
+              AND thtc.status = :status
+            LIMIT 1
+            SQL,
+            [':id' => $id, ':status' => $expectedStatus],
+        )->queryOne();
+
+        if (!is_array($row) || !$this->canReviewThtc($icno, $row, $stage)) {
+            return null;
+        }
+
+        return $this->mapThtcActionRow($row, $stage);
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array{success: bool, message: string}
+     */
+    public function saveThtcReview(string $icno, int $id, string $stage, array $input): array
+    {
+        $stage = $stage === 'approve' ? 'approve' : 'verify';
+        $record = $this->thtcReview($icno, $id, $stage);
+        if ($record === null) {
+            return ['success' => false, 'message' => 'Rekod THTC tidak dijumpai atau sudah selesai.'];
+        }
+
+        $status = (int) ($input['status'] ?? 0);
+        $allowed = $stage === 'approve' ? [3, 5] : [2, 4];
+        if (!in_array($status, $allowed, true)) {
+            return ['success' => false, 'message' => 'Status THTC diperlukan.'];
+        }
+
+        $remark = trim((string) ($input['remark'] ?? ''));
+        if ($remark === '') {
+            return ['success' => false, 'message' => 'Catatan diperlukan.'];
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $fields = $stage === 'approve'
+            ? ['status' => $status, 'remark_approver' => $remark, 'icno_approver' => $icno, 'dt_entered_approver' => $now]
+            : ['status' => $status, 'remark_verifier' => $remark, 'dt_entered_verifier' => $now];
+        $updated = (int) $this->db->transaction(fn (): int => $this->db->createCommand()->update('attendance.tbl_thtc', $fields, [
+            'id' => $id,
+            'status' => $stage === 'approve' ? 2 : 1,
+        ])->execute());
+
+        if ($updated < 1) {
+            return ['success' => false, 'message' => 'Rekod THTC tidak dikemaskini.'];
+        }
+
+        $this->notify((string) $record['icno'], 'Kehadiran', 'Status THTC pada ' . (string) $record['date'] . ' dikemaskini kepada ' . $this->thtcStatus($status) . '.', $now);
+
+        return ['success' => true, 'message' => 'Rekod THTC telah dikemaskini.'];
     }
 
     /**
@@ -1673,11 +2497,11 @@ final readonly class AttendanceService
                 'visible' => $roleFlags['departmentChief'],
                 'badge' => 0,
                 'items' => [
-                    $this->legacyItem('Staff attendance', 'kehadiran/kj-pantau-kehadiran', 'list'),
-                    $this->legacyItem('Jadual WFH', 'kehadiran/wfh-jadual-kj', 'calendar-check'),
-                    $this->legacyItem('Senarai Tindakan WFH', 'kehadiran/wfh-lulus', 'users'),
-                    $this->legacyItem('Senarai Permohonan WFH', 'kehadiran/pantau-permohonan-wfh-pegawai', 'list'),
-                    $this->legacyItem('Tidak Hadir Tanpa Cuti (THTC)', 'kehadiran/list-kj', 'list'),
+                    $this->localItem('Staff attendance', '/kehadiran/kj-pantau-kehadiran', 'list'),
+                    $this->localItem('Jadual WFH', '/kehadiran/wfh-jadual-kj', 'calendar-check'),
+                    $this->localItem('Senarai Tindakan WFH', '/kehadiran/wfh-lulus', 'users'),
+                    $this->localItem('Senarai Permohonan WFH', '/kehadiran/pantau-permohonan-wfh-pegawai', 'list'),
+                    $this->localItem('Tidak Hadir Tanpa Cuti (THTC)', '/kehadiran/list-kj', 'list'),
                 ],
             ],
             [
@@ -1711,17 +2535,17 @@ final readonly class AttendanceService
                 'visible' => $roleFlags['administrator'],
                 'badge' => 0,
                 'items' => [
-                    $this->legacyItem('Staff lists', 'kehadiran/staff-all', 'address-book'),
-                    $this->legacyItem('Statistic (JFPIU)', 'kehadiran/admin-mth-rpt', 'bar-chart'),
-                    $this->legacyItem('Warning Letters', 'kehadiran/color-rpt', 'list'),
-                    $this->legacyItem('Raw Data', 'attendance/index', 'file'),
+                    $this->localItem('Staff lists', '/kehadiran/staff-all', 'address-book'),
+                    $this->localItem('Statistic (JFPIU)', '/kehadiran/admin-mth-rpt', 'bar-chart'),
+                    $this->localItem('Warning Letters', '/kehadiran/color-rpt', 'list'),
+                    $this->localItem('Raw Data', '/attendance/index', 'file'),
                     $this->legacyItem('Senarai Keluar Pejabat', 'kehadiran/senarai_keluar_pejabat', 'log-out'),
-                    $this->legacyItem('Admin Post (Akad)', 'kehadiran/admin-post-list', 'briefcase'),
-                    $this->legacyItem('Pantau Permohonan JAFPIB', 'kehadiran/pantau-permohonan-wfh-admin', 'home'),
-                    $this->legacyItem('Jadual JAFPIB', 'kehadiran/wfh-jadual-admin', 'calendar'),
-                    $this->legacyItem('Statistik WFH', 'kehadiran/statistik-wfh', 'bar-chart'),
+                    $this->localItem('Admin Post (Akad)', '/kehadiran/admin-post-list', 'briefcase'),
+                    $this->localItem('Pantau Permohonan JAFPIB', '/kehadiran/pantau-permohonan-wfh-admin', 'home'),
+                    $this->localItem('Jadual JAFPIB', '/kehadiran/wfh-jadual-admin', 'calendar'),
+                    $this->localItem('Statistik WFH', '/kehadiran/statistik-wfh', 'bar-chart'),
                     $this->legacyItem('Vaccination Watchlist', 'vaksinasi/watch-list', 'syringe'),
-                    $this->legacyItem('Tidak Hadir Tanpa Cuti (THTC)', 'attendance/absent-list-bpsm', 'list'),
+                    $this->localItem('Tidak Hadir Tanpa Cuti (THTC)', '/attendance/absent-list-bpsm', 'list'),
                 ],
             ],
             [
@@ -1732,8 +2556,8 @@ final readonly class AttendanceService
                 'badge' => 0,
                 'items' => [
                     $this->legacyItem('By Month (Range)', 'kehadiran/range-month', 'calendar-range'),
-                    $this->legacyItem('Monthly Reports', 'kehadiran/sup-mth-rpt', 'flag'),
-                    $this->legacyItem('Yearly Reports', 'kehadiran/sup-year-rpt', 'globe'),
+                    $this->localItem('Monthly Reports', '/kehadiran/sup-mth-rpt', 'flag'),
+                    $this->localItem('Yearly Reports', '/kehadiran/sup-year-rpt', 'globe'),
                 ],
             ],
         ];
@@ -2614,6 +3438,167 @@ final readonly class AttendanceService
         }
 
         return [implode(', ', $placeholders), $params];
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function mapAttendanceReasonApproval(array $row): array
+    {
+        return [
+            'id' => (string) ($row['id'] ?? ''),
+            'icno' => $this->value($row['icno'] ?? null),
+            'staffName' => $this->employees->displayName($row['staff_name'] ?? null),
+            'department' => $this->value($row['department_shortname'] ?? null),
+            'date' => $this->formatDate($row['tarikh'] ?? null),
+            'day' => $this->value($row['day'] ?? null),
+            'wbb' => $this->value($row['jenis_wp'] ?? null),
+            'timeIn' => $this->formatTime($row['time_in'] ?? null),
+            'timeOut' => $this->formatTime($row['time_out'] ?? null),
+            'statusLabels' => $this->statusLabels($row),
+            'remark' => $this->value($row['remark'] ?? null),
+            'appRemark' => $this->value($row['app_remark'] ?? null, ''),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function mapWfhActionRow(array $row): array
+    {
+        $docHash = $this->value($row['hashcode'] ?? null, '');
+
+        return [
+            'id' => (string) ($row['id'] ?? ''),
+            'icno' => $this->value($row['icno'] ?? null),
+            'staffName' => $this->employees->displayName($row['staff_name'] ?? null),
+            'grade' => $this->value($row['job_grade'] ?? null),
+            'department' => $this->value($row['department_shortname'] ?? null),
+            'date' => $this->value($row['full_date'] ?? null, $this->dateRangeText($row['start_date'] ?? null, $row['end_date'] ?? null)),
+            'period' => $this->value($row['tempoh'] ?? null),
+            'remark' => $this->value($row['remark'] ?? null),
+            'status' => $this->value($row['status'] ?? null),
+            'entryDate' => $this->value($row['entry_dt'] ?? null),
+            'appRemark' => $this->value($row['app_remark'] ?? null, ''),
+            'documentName' => $this->value($row['doc_name'] ?? null, ''),
+            'documentUrl' => $docHash === '' ? '' : 'https://mediahost.ums.edu.my/api/v1/viewFile/' . rawurlencode($docHash),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function mapThtcActionRow(array $row, string $stage): array
+    {
+        $doc = $this->value($row['supporting_doc'] ?? null, '');
+
+        return [
+            'id' => (string) ($row['id'] ?? ''),
+            'stage' => $stage,
+            'icno' => $this->value($row['icno'] ?? null),
+            'staffName' => $this->employees->displayName($row['staff_name'] ?? null),
+            'department' => $this->value($row['department_shortname'] ?? null),
+            'date' => $this->formatDate($row['tarikh'] ?? null),
+            'day' => $this->value($row['day'] ?? null),
+            'absentRemark' => $this->value($row['absent_remark'] ?? null),
+            'remark' => $this->value($row['remark'] ?? null),
+            'verifierRemark' => $this->value($row['remark_verifier'] ?? null, ''),
+            'approverRemark' => $this->value($row['remark_approver'] ?? null, ''),
+            'status' => $this->thtcStatus((int) ($row['status'] ?? 0)),
+            'documentUrl' => $doc !== '' && $doc !== 'deleted' ? 'https://mediahost.ums.edu.my/api/v1/viewFile/' . rawurlencode($doc) : '',
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function canManageWfh(string $icno, array $row): bool
+    {
+        if ($this->isAdministrator($icno)) {
+            return true;
+        }
+
+        foreach (['icno', 'app_by', 'ver_by', 'set_by'] as $field) {
+            if ($this->value($row[$field] ?? null, '') === $icno) {
+                return true;
+            }
+        }
+
+        $targetIcno = $this->value($row['icno'] ?? null, '');
+        if ($targetIcno === '') {
+            return false;
+        }
+
+        foreach ($this->supervisorStaff($icno) as $person) {
+            if ((string) ($person['icno'] ?? '') === $targetIcno) {
+                return true;
+            }
+        }
+
+        foreach ($this->departmentChiefStaff($icno) as $person) {
+            if ((string) ($person['icno'] ?? '') === $targetIcno) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function canReviewThtc(string $icno, array $row, string $stage): bool
+    {
+        if ($this->isAdministrator($icno)) {
+            return true;
+        }
+
+        $field = $stage === 'approve' ? 'icno_approver' : 'icno_verifier';
+        $value = $this->value($row[$field] ?? null, '');
+
+        return $value !== '' && str_contains($value, $icno);
+    }
+
+    private function notify(string $icno, string $title, string $content, string $dateTime): void
+    {
+        if ($icno === '') {
+            return;
+        }
+
+        try {
+            $this->db->createCommand()->insert('system_core.tbl_notifications', [
+                'icno' => $icno,
+                'title' => $title,
+                'content' => substr($content, 0, 1000),
+                'ntf_dt' => $dateTime,
+                'status' => 0,
+            ])->execute();
+        } catch (\Throwable) {
+            // Notification failure must not block the attendance workflow update.
+        }
+    }
+
+    private function refreshPendingTask(string $icno, ?int $commandId): void
+    {
+        if ($icno === '') {
+            return;
+        }
+
+        try {
+            $condition = ['icno' => $icno];
+            if ($commandId !== null) {
+                $condition['command_id'] = $commandId;
+            }
+            $this->db->createCommand()->update('system_core.tbl_pending_task', [
+                'count' => 0,
+                'status' => 0,
+            ], $condition)->execute();
+        } catch (\Throwable) {
+            // Pending-task refresh is best-effort parity with the Yii2 console command.
+        }
     }
 
     /**

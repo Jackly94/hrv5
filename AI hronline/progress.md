@@ -1798,14 +1798,9 @@ Captured:
   - reason approval queue read-only
   - THTC department monitor
   - keep `Staff Seliaan` as Yii2 handoff until Registrar API proxy decision
-- Write flows are explicitly deferred:
-  - `kehadiran/pengesahan`
-  - bulk reason approval POST
-  - `kehadiran/wfh-lulus-tindakan`
-  - bulk WFH approval POST
-  - `kehadiran/delete-wfh`
-  - THTC verify/approval actions
-  - notification/audit/dashboard pending-task side effects
+- Write-flow decision:
+  - Individual `kehadiran/pengesahan`, `kehadiran/wfh-lulus-tindakan`, `kehadiran/delete-wfh`, and THTC verify/approval actions were moved into Yii3 in the first approval/delete write slice.
+  - Bulk approval POST flows and full notification/audit/dashboard pending-task verification remain deferred.
 
 UI decision:
 
@@ -1830,7 +1825,7 @@ Implemented:
 - Officer service methods in `src/Shared/AttendanceService.php` for supervised staff, card colour report, monthly summary, daily attendance monitor, WFH application monitor, WFH approval queue, reason approval queue, and KP/THTC department list.
 - Officer menu links now point locally for migrated read pages.
 - `Staff Seliaan` remains a Yii2 legacy handoff because it depends on the Registrar team API.
-- Write actions remain Yii2 handoffs from the Yii3 tables.
+- First individual approval/delete actions now route locally from the Yii3 tables; heavier bulk/write/export actions remain Yii2 or deferred.
 
 Verification:
 
@@ -1885,13 +1880,12 @@ Captured:
   - THTC supervisor list
   - defer shield status until table/relation mapping
   - defer admin manage-shift-supervisor until admin/shift-management slice
-- Write flows explicitly deferred:
+- Write flows still deferred after the first approval/delete slice:
   - `set-peg`
   - `wbb-list`
   - `kemaskini-peraku`
-  - WFH edit/delete
+  - WFH day edit and bulk actions
   - shift add/remove/create/update
-  - `verify-thtc-sv`
   - print/PDF/export routes
 
 Recommended first execution slice:
@@ -1971,8 +1965,8 @@ Not yet migrated / still legacy Yii2:
 Current migration boundary:
 
 - Migrated STARS top-menu pages are local Yii3 pages and follow the attendance UI standard.
-- Many migrated pages are intentionally read-first/read-only.
-- Approval, reject, delete, edit, print/PDF, WFH day edits, shift setup saves, THTC verification, and notification/audit side effects remain Yii2 handoffs until the write-flow migration slices.
+- Many migrated pages started read-first/read-only.
+- First approval/delete write paths have been moved to Yii3. Remaining heavier write/export paths are staff THTC upload, staff reason remark submission, WBB setup, WFH day edits, shift setup saves, raw attendance CRUD, bulk approvals, PDF/print actions, and full audit/dashboard parity.
 
 ### Yii3 DB Configuration Migration
 
@@ -1991,3 +1985,108 @@ Recorded on 2026-11-19.
   - and so on for `DB3` through `DB19`.
 - Local fallback remains enabled temporarily: if env vars are not set, Yii3 reads the matching old Yii2 `../staff/config/db*.php`.
 - MySQL configs can be instantiated now. SQL Server configs are present but not instantiated yet because the Yii3 app currently only has `yiisoft/db-mysql`; SQL Server support needs the matching Yii DB package/driver before using `db3`, `db4`, `db5`, `db6`, `db9`, `db10`, `db12`, or `db14`.
+
+### Lantikan Staf Baru Write Foundation
+
+Recorded on 2026-11-20.
+
+- Added `AI hronline/10_lantikan_pending_migration_execution_plan.md` as the task-by-task Lantikan pending migration plan.
+- Added `LantikanStafBaruTransactionService` for the feature-gated Staf Baru Yii3 write path.
+- Added reusable Staf Baru insert-plan preparation in `LantikanStafBaruService`.
+- Added MySQL advisory-lock handling for live UMSPER reservation using `GET_LOCK('hronline.umsper.reserve', 10)`.
+- Added `HRONLINE_LANTIKAN_STAF_BARU_WRITE=1` gating for live Staf Baru submit. The flag is off by default.
+- Added `/lantikan/lantik-staf-baru/result` reconciliation page for core table checks and pending post-commit status.
+- Kept AD create, IdP Mata, notifications, allocation profile write replacement, `attendance.tbl_wp`, `keselamatan.tbl_staff_keselamatan`, and `hrm.myhealth_tblmaxtuntutan` out of the DB transaction.
+- Verification run:
+  - `php -l` passed for changed Lantikan PHP files and routes.
+  - `php yii list` booted successfully.
+  - Unauthenticated HTTP smoke for `/hronline/lantikan/lantik-staf-baru/result?icno=TEST` returned redirect to `/hronline/login`.
+- Not yet completed:
+  - No live dummy appointment was inserted in this slice.
+  - `STAFBARU-06` and `STAFBARU-07` remain unchecked until approved AD-enabled dummy/UAT write and rollback/concurrency checks are run.
+  - Open blockers are recorded in `AI hronline/10_lantikan_pending_migration_execution_plan.md#blocker-register`.
+
+### STARS Remaining Top Menu Migration Plan
+
+Recorded on 2026-11-20.
+
+Updated `AI hronline/04_stars_migration_plan.md` with a concrete migration plan for STARS top-menu items that still show Yii2 handoffs.
+
+Current remaining intentional top-menu handoffs after execution:
+
+- Officer: `Staff Seliaan` remains Yii2 because it belongs to `cuti/pegawai/staffonleave` and depends on the Cuti/Registrar API boundary.
+- Administrator: `Senarai Keluar Pejabat` remains Yii2 until the Yii3 SQL Server driver is available for `db3`.
+- Administrator: `Vaccination Watchlist` remains Yii2 because it is a Vaksinasi module boundary.
+- Reports: monthly/yearly report links are local; `By Month (Range)` remains tied to old PDF generation until export policy is approved.
+
+New plan slices:
+
+- `STARS-07A - Officer Staff Seliaan Boundary`
+- `STARS-07B - Head Of Department Read Routes`
+- `STARS-07C - Administrator Read Routes`
+- `STARS-07D - Reports Menu And Export Decision`
+
+Important boundary:
+
+- The first approval/delete write routes are now in Yii3. Remaining heavy write/export work still excludes WFH day edits, shift setup saves, raw attendance CRUD, bulk approvals, PDF generation, staff uploads, and full dashboard/audit parity.
+
+### STARS Remaining Top Menu Task Board
+
+Recorded on 2026-11-20.
+
+Expanded `AI hronline/04_stars_migration_plan.md` into runnable checkbox tasks.
+
+Recommended task order:
+
+- [x] `STARS-07A-01` Analyze Officer `Staff Seliaan` boundary.
+- [x] `STARS-07A-02` Implement a local read page or confirm intentional Yii2 handoff for `Staff Seliaan`.
+- [x] `STARS-07B-01` Build HOD scope helpers.
+- [x] `STARS-07B-02` Add HOD page shell and routes.
+- [x] `STARS-07B-03` Migrate HOD `Staff attendance`.
+- [x] `STARS-07B-04` Migrate HOD `Jadual WFH`.
+- [x] `STARS-07B-05` Validate HOD WFH queue links.
+- [x] `STARS-07B-06` Migrate HOD `THTC` list.
+- [x] `STARS-07B-07` Cut over and verify HOD menu links.
+- [x] `STARS-07C-01` Add admin guard and page shell.
+- [x] `STARS-07C-02` Migrate admin `Staff lists`.
+- [x] `STARS-07C-03` Migrate admin `Warning Letters`.
+- [x] `STARS-07C-04` Migrate admin `Statistik WFH`.
+- [x] `STARS-07C-05` Migrate admin `THTC` BPSM overview.
+- [x] `STARS-07C-06` Migrate admin `Statistic (JFPIU)`.
+- [x] `STARS-07C-07` Migrate admin WFH monitor and schedule.
+- [x] `STARS-07C-08` Migrate admin `Admin Post (Akad)`.
+- [x] `STARS-07C-09` Decide SQL Server `Senarai Keluar Pejabat`.
+- [x] `STARS-07C-10` Decide `Vaccination Watchlist` boundary.
+- [x] `STARS-07C-11` Cut over and verify admin menu links.
+- [x] `STARS-07D-01` Decide reports export/PDF policy.
+- [x] `STARS-07D-02` Cut over monthly/yearly report links.
+- [x] `STARS-07D-03` Handle `By Month (Range)`.
+- [x] `STARS-07D-04` Update DB-backed main menu route map and clean legacy badges.
+
+Execution completed:
+
+- Added Yii3 HOD read routes for attendance monitor, WFH schedule, and THTC list.
+- Added Yii3 admin read routes for staff directory, monthly statistic, warning letters, raw attendance, WFH/JAFPIB monitor and schedule, WFH statistics, admin post list, and BPSM THTC overview.
+- Cut migrated HOD/Admin/Reports links to local STARS menu items and updated DB-backed main-menu route normalization.
+- Kept Officer `Staff Seliaan`, Admin `Senarai Keluar Pejabat`, Admin `Vaccination Watchlist`, and Reports `By Month (Range)` as documented Yii2 handoffs.
+- Verification passed: PHP syntax checks for changed STARS PHP files, `php yii list`, and unauthenticated HTTP smokes for all new HOD/Admin routes landing on login.
+
+### STARS Approval/Delete Write Slice
+
+Recorded on 2026-11-20.
+
+- Added local Yii3 write action/template for:
+  - `/kehadiran/pengesahan`
+  - `/kehadiran/wfh-lulus-tindakan`
+  - `/kehadiran/delete-wfh`
+  - `/kehadiran/verify-thtc-sv`
+  - `/kehadiran/approve-thtc`
+- Added AttendanceService command methods for individual reason approval, WFH approval/reject, WFH delete, supervisor THTC verification, and HOD THTC approval.
+- Wrapped first-slice update/delete commands in the project transaction pattern.
+- Replaced migrated WFH delete links with POST/CSRF forms.
+- Updated action buttons for migrated approval/review flows to local Yii3 pages.
+- Verification passed:
+  - `php -l` for changed STARS write/action/template files.
+  - `php yii list`.
+  - Unauthenticated HTTP smokes for the five new write routes all resolve to login.
+- Still requires authenticated dummy-row verification before full write-flow completion.

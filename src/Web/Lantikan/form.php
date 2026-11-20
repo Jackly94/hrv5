@@ -10,12 +10,16 @@ use Yiisoft\Yii\View\Renderer\Csrf;
  * @var WebView $this
  * @var Csrf $csrf
  * @var array<string, mixed> $form
- * @var array{success: bool, values: array<string, string>, errors: array<string, string>, proposed: list<string>, plan?: array<string, mixed>}|null $result
+ * @var array<string, mixed>|null $result
  */
 
 $this->setTitle((string) $form['title']);
 $values = $form['values'] ?? [];
 $errors = $result['errors'] ?? [];
+if (!is_array($errors)) {
+    $errors = [];
+}
+$formError = is_array($errors) && isset($errors['_form']) ? (string) $errors['_form'] : '';
 $fieldError = static fn (string $field): string => isset($errors[$field])
     ? '<p class="field-error">' . Html::encode($errors[$field]) . '</p>'
     : '';
@@ -28,7 +32,7 @@ $checked = static fn (string $field): string => (string) ($values[$field] ?? '')
         <div class="profile-heading page-card-heading">
             <div>
                 <h1><?= Html::encode((string) $form['title']) ?></h1>
-                <p>Mod dry-run Yii3</p>
+                <p><?= ($form['writeEnabled'] ?? false) ? 'Submit Yii3 terkawal' : 'Mod dry-run Yii3' ?></p>
             </div>
             <div class="profile-actions">
                 <a class="button-link button-link-secondary" href="/lantikan/index">
@@ -51,7 +55,11 @@ $checked = static fn (string $field): string => (string) ($values[$field] ?? '')
 
                 <?php if ($result !== null): ?>
                     <div class="profile-empty">
-                        <?= $result['success'] ? 'Dry-run berjaya. Tiada rekod disimpan.' : 'Sila semak ralat borang.' ?>
+                        <?php if ($formError !== ''): ?>
+                            <?= Html::encode($formError) ?>
+                        <?php else: ?>
+                            <?= ($result['success'] ?? false) ? ((string) ($result['mode'] ?? '') === 'live' ? 'Lantikan berjaya disimpan.' : 'Dry-run berjaya. Tiada rekod disimpan.') : 'Sila semak ralat borang.' ?>
+                        <?php endif; ?>
                     </div>
                     <?php if ($result['proposed'] !== []): ?>
                         <ul>
@@ -151,6 +159,12 @@ $checked = static fn (string $field): string => (string) ($values[$field] ?? '')
                             <i data-lucide="check"></i>
                             <span>Dry Run</span>
                         </button>
+                        <?php if (($form['writeEnabled'] ?? false) && (string) ($form['flow'] ?? '') === 'staf-baru'): ?>
+                            <button class="button-link-success" type="submit" name="live_submit" value="1">
+                                <i data-lucide="save"></i>
+                                <span>Submit Yii3</span>
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </form>
             </div>

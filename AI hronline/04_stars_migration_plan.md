@@ -154,7 +154,11 @@ Keep legacy links inside the first Yii3 page for non-migrated STARS sub-features
 - [x] STARS-04 - Sidebar Cutover
 - [x] STARS-05 - Module Top Menu
 - [x] STARS-06 - Staff Read-Only Routes
-- [ ] STARS-07 - Officer And Supervisor Read Reports
+- [x] STARS-07 - Officer And Supervisor Read Reports
+- [x] STARS-07A - Officer Staff Seliaan Boundary
+- [x] STARS-07B - Head Of Department Read Routes
+- [x] STARS-07C - Administrator Read Routes
+- [x] STARS-07D - Reports Menu And Export Decision
 - [ ] STARS-08 - Reason And Approval Writes
 - [ ] STARS-09 - WFH/WFO And Shift Admin
 - [ ] STARS-10 - API Migration Decision
@@ -180,7 +184,267 @@ Not yet migrated / still legacy Yii2:
 Boundary note:
 
 - Migrated top-menu pages are local Yii3 pages using the attendance UI standard.
-- Many migrated pages are read-first/read-only. Approval, reject, delete, edit, print/PDF, WFH day edits, shift setup saves, THTC verification, and notification/audit side effects remain Yii2 handoffs until the dedicated write-flow slices.
+- Many migrated pages started read-first/read-only. The first Yii3 write slice now covers individual reason approval, WFH approval/reject, WFH delete, supervisor THTC verification, and HOD THTC approval. Heavy edit/maintenance flows, print/PDF, WFH day edits, shift setup saves, raw attendance CRUD, staff THTC upload, bulk approvals, and full audit parity remain tracked in later write slices.
+
+## Remaining Top Menu Migration Plan
+
+Recorded on 2026-11-20 after comparing `AttendanceService::menuSections()` with the old Yii2 `views/kehadiran/_menu.php`.
+
+Current Yii3 status:
+
+- Staff menu is local except external Outstation and static Guideline.
+- Officer menu is local except `Staff Seliaan`, which intentionally still points to `cuti/pegawai/staffonleave`.
+- Attendance Supervisor menu is local read-first/read-only.
+- Head of Department, Administrator, and Reports menu groups are local for the migrated read pages.
+- Remaining intentional top-menu handoffs are Officer `Staff Seliaan`, Admin `Senarai Keluar Pejabat`, Admin `Vaccination Watchlist`, and Reports `By Month (Range)`.
+- Local Yii3 pages now handle the first approval/delete write paths. Remaining Yii2 write handoffs are staff THTC upload, staff reason remark submission, WBB officer setup, WFH day edits, shift setup saves, raw attendance CRUD, bulk approvals, PDF/print actions, and full dashboard/audit parity.
+
+### Remaining Top Menu Task Board
+
+Run these tasks one at a time. Mark the task checkbox only after implementation, route/menu wiring, and verification notes are complete.
+
+- [x] STARS-07A-01 - Analyze Officer `Staff Seliaan` Boundary
+- [x] STARS-07A-02 - Implement Or Confirm Handoff For Officer `Staff Seliaan`
+- [x] STARS-07B-01 - Head Of Department Scope Foundation
+- [x] STARS-07B-02 - Head Of Department Page Shell And Routes
+- [x] STARS-07B-03 - Migrate HOD `Staff attendance`
+- [x] STARS-07B-04 - Migrate HOD `Jadual WFH`
+- [x] STARS-07B-05 - Validate HOD WFH Queue Links
+- [x] STARS-07B-06 - Migrate HOD `THTC` List
+- [x] STARS-07B-07 - HOD Menu Cutover And Verification
+- [x] STARS-07C-01 - Administrator Guard And Page Shell
+- [x] STARS-07C-02 - Migrate Admin `Staff lists`
+- [x] STARS-07C-03 - Migrate Admin `Warning Letters`
+- [x] STARS-07C-04 - Migrate Admin `Statistik WFH`
+- [x] STARS-07C-05 - Migrate Admin `THTC` BPSM Overview
+- [x] STARS-07C-06 - Migrate Admin `Statistic (JFPIU)`
+- [x] STARS-07C-07 - Migrate Admin WFH Monitor And Schedule
+- [x] STARS-07C-08 - Migrate Admin `Admin Post (Akad)`
+- [x] STARS-07C-09 - Decide Admin SQL Server `Senarai Keluar Pejabat`
+- [x] STARS-07C-10 - Decide Admin `Vaccination Watchlist` Boundary
+- [x] STARS-07C-11 - Admin Menu Cutover And Verification
+- [x] STARS-07D-01 - Reports Export/PDF Decision
+- [x] STARS-07D-02 - Reports Monthly/Yearly Local Cutover
+- [x] STARS-07D-03 - Reports `By Month (Range)` Handling
+- [x] STARS-07D-04 - Main Menu Route Map And Legacy Badge Cleanup
+
+Execution notes:
+
+- Officer `Staff Seliaan` stays an intentional Yii2 handoff because it belongs to the Cuti/Registrar boundary.
+- HOD `Staff attendance`, `Jadual WFH`, and `THTC` now have local Yii3 read pages. Existing HOD WFH queue/application links use the already migrated Yii3 Officer pages; individual approval/reject/delete actions now use Yii3 first-slice write routes.
+- Admin `Staff lists`, `Statistic (JFPIU)`, `Warning Letters`, `Raw Data`, `Admin Post (Akad)`, WFH/JAFPIB monitor and schedule, `Statistik WFH`, and BPSM `THTC` overview now have local Yii3 read pages.
+- Admin `Senarai Keluar Pejabat` stays Yii2 until the Yii3 SQL Server driver is available for `db3`.
+- Admin `Vaccination Watchlist` stays Yii2 because it is a Vaksinasi module boundary.
+- Reports `Monthly Reports` and `Yearly Reports` now point local; `By Month (Range)` stays Yii2 until export/PDF policy is approved.
+- `MenuService::LOCAL_ROUTE_MAP` includes migrated STARS routes so DB-backed main-menu links open Yii3 where the route is local.
+
+Recommended execution order:
+
+1. `STARS-07A` first, because it is the only remaining Officer item and may stay as a cross-module handoff.
+2. `STARS-07B` next, because HOD pages can reuse Officer/Supervisor read patterns with lower write risk.
+3. `STARS-07C` in two batches: low-risk admin read pages first, heavier WFH/admin-post pages second.
+4. `STARS-07D` last, because report/export decisions affect links beyond the STARS top menu.
+
+### STARS-07A - Officer Staff Seliaan Boundary
+
+Goal:
+
+- Decide and execute the correct path for Officer `Staff Seliaan`, currently the only Officer top-menu item still using Yii2.
+
+Yii2 source mapping:
+
+| Menu item | Current Yii3 menu URL | Yii2 source | Yii3 migration target |
+|---|---|---|---|
+| Staff Seliaan | `http://127.0.0.1:8083/cuti/pegawai/staffonleave` | `cuti/PegawaiController::actionStaffonleave()`, view `cuti/pegawai/staffonleave.php` | Either keep as an intentional Cuti/Registrar handoff, or migrate as a small Yii3 read-only staff-on-leave page after the Cuti owner/API boundary is approved. |
+
+Tasks:
+
+- [x] STARS-07A-01 - Analyze Officer `Staff Seliaan` Boundary
+  - Confirm whether this belongs inside STARS or the Cuti migration.
+  - Identify data source/API dependency and owner.
+  - Record whether Yii3 should migrate the page or keep the handoff.
+- [x] STARS-07A-02 - Implement Or Confirm Handoff For Officer `Staff Seliaan`
+  - If staying legacy, document it as intentional and leave the `Yii2` badge.
+  - If migrating, add a read-only Yii3 route and update the Officer menu item to `localItem()`.
+  - Verify Officer access and row counts for the selected Officer identity.
+
+Acceptance:
+
+- The Officer menu has no ambiguous remaining item.
+- If migrated, the local page is read-only and matches Yii2 row counts.
+- If not migrated, the plan states the external module/API reason clearly.
+
+### STARS-07B - Head Of Department Read Routes
+
+Goal:
+
+- Move the Head of Department top-menu group to local Yii3 read pages. Approval/delete review actions are covered by the first `STARS-08` Yii3 write slice.
+
+Yii2 source mapping:
+
+| Menu item | Current Yii3 menu URL | Yii2 source | Yii3 migration target |
+|---|---|---|---|
+| Staff attendance | `http://127.0.0.1:8083/kehadiran/kj-pantau-kehadiran` | `KehadiranController::actionKjPantauKehadiran()`, view `kj-pantau-kehadiran.php` | Add local `/kehadiran/kj-pantau-kehadiran`; department-chief scope is active staff where `DeptId` matches the chief's department. Reuse the daily attendance monitor presentation from Officer/Supervisor pages. |
+| Jadual WFH | `http://127.0.0.1:8083/kehadiran/wfh-jadual-kj` | `KehadiranController::actionWfhJadualKj()`, view `wfh-jadual-kj.php` | Add local `/kehadiran/wfh-jadual-kj`; reuse the WFH schedule grid with department-chief staff scope. Keep print/export legacy. |
+| Senarai Tindakan WFH | `http://127.0.0.1:8083/kehadiran/wfh-lulus` | `KehadiranController::actionWfhLulus()`, view `wfh-lulus.php` | Validate the existing Yii3 `/kehadiran/wfh-lulus` with a department-chief identity. If row counts match Yii2, change the HOD menu item to local. Individual approval/reject is local Yii3 in the first `STARS-08` write slice. |
+| Senarai Permohonan WFH | `http://127.0.0.1:8083/kehadiran/pantau-permohonan-wfh-pegawai` | `KehadiranController::actionPantauPermohonanWfhPegawai()`, view `pantau-permohonan-wfh.php` | Validate the existing Yii3 `/kehadiran/pantau-permohonan-wfh-pegawai` with a department-chief identity. If row counts match Yii2, change the HOD menu item to local. Delete is local Yii3 and POST/CSRF protected in the first `STARS-08` write slice. |
+| Tidak Hadir Tanpa Cuti (THTC) | `http://127.0.0.1:8083/kehadiran/list-kj` | `KehadiranController::actionListKj()`, view `absent-list-kj.php`, `TblThtcSearch::search()` | Add local `/kehadiran/list-kj`; read-only list of THTC rows awaiting HOD approval. Individual `approve-thtc` review is local Yii3 in the first `STARS-08` write slice. |
+
+Dependencies:
+
+- `hronline.department` for `chief`, `isActive`, and department identity.
+- `hronline.tblprcobiodata` for active department staff.
+- `attendance.tbl_rekod` for attendance monitor rows.
+- `attendance.tbl_wfh` for WFH queues/schedules.
+- `attendance.tbl_thtc` and related THTC joins for `list-kj`.
+
+Implementation plan:
+
+- [x] STARS-07B-01 - Head Of Department Scope Foundation
+  - Add department-chief scope helpers to `AttendanceService`: current chief department, active department staff, and HOD authorization guard.
+  - Verify selected HOD identity resolves to the same department used by Yii2.
+- [x] STARS-07B-02 - Head Of Department Page Shell And Routes
+  - Add `HeadDepartmentAction` or equivalent focused action.
+  - Add local routes for `/kehadiran/kj-pantau-kehadiran`, `/kehadiran/wfh-jadual-kj`, and `/kehadiran/list-kj`.
+  - Add a reusable HOD template following `attendance-standard-*`.
+- [x] STARS-07B-03 - Migrate HOD `Staff attendance`
+  - Implement read-only department daily attendance monitor.
+  - Reuse Officer/Supervisor daily attendance presentation where possible.
+  - Keep detail/edit/print links as Yii2 handoffs.
+- [x] STARS-07B-04 - Migrate HOD `Jadual WFH`
+  - Implement read-only department WFH schedule grid.
+  - Keep print/export legacy.
+- [x] STARS-07B-05 - Validate HOD WFH Queue Links
+  - Smoke existing Yii3 `/kehadiran/wfh-lulus` and `/kehadiran/pantau-permohonan-wfh-pegawai` using a HOD identity.
+  - If row counts match Yii2, convert HOD menu links to local.
+  - If not, add HOD-specific service scope before cutover.
+- [x] STARS-07B-06 - Migrate HOD `THTC` List
+  - Implement read-only `/kehadiran/list-kj`.
+  - Wire `approve-thtc` to the local Yii3 review route from the first `STARS-08` write slice.
+- [x] STARS-07B-07 - HOD Menu Cutover And Verification
+  - Update `menuSections()` so completed HOD pages use `localItem()`.
+  - Run syntax checks and authenticated smoke for every HOD route.
+  - Record row-count comparison and completion notes.
+
+Acceptance:
+
+- A non-chief cannot access HOD pages.
+- A department chief sees only active staff in their own department.
+- Yii3 row counts match Yii2 for selected HOD identities.
+- No HOD route mutates attendance, WFH, or THTC records.
+
+### STARS-07C - Administrator Read Routes
+
+Goal:
+
+- Move administrator top-menu pages that can be safely represented as read-only Yii3 pages while preserving Yii2 for CRUD, exports, and cross-driver gaps.
+
+Yii2 source mapping:
+
+| Menu item | Current Yii3 menu URL | Yii2 source | Yii3 migration target |
+|---|---|---|---|
+| Staff lists | `http://127.0.0.1:8083/kehadiran/staff-all` | `KehadiranController::actionStaffAll()`, view `staff-all.php`, `TblprcobiodataSearch` | Add local `/kehadiran/staff-all`; active staff directory with department filters. Read-only first. |
+| Statistic (JFPIU) | `http://127.0.0.1:8083/kehadiran/admin-mth-rpt` | `KehadiranController::actionAdminMthRpt()`, view `rpt.php` | Replace with local admin-scoped monthly summary, likely reusing supervisor monthly report with administrator-wide department options. |
+| Warning Letters | `http://127.0.0.1:8083/kehadiran/color-rpt` | `KehadiranController::actionColorRpt()`, view `color-rpt.php`, `attendance.tbl_warnakad` | Add local `/kehadiran/color-rpt`; month/year/color filters. Keep print route legacy. |
+| Raw Data | `http://127.0.0.1:8083/attendance/index` | `AttendanceController::actionIndex()`, view `attendance/index.php`, `TblRekodSearch` | Add read-only local `/attendance/index` or `/kehadiran/raw-data`. Create/update/delete stays legacy until admin write policy is approved. |
+| Senarai Keluar Pejabat | `http://127.0.0.1:8083/kehadiran/senarai_keluar_pejabat` | `KehadiranController::actionSenarai_keluar_pejabat()`, view `senarai_keluar_pejabat.php`, model `KeluarPejabat` on `db3` SQL Server view `vEAttendance` | Defer until Yii3 SQL Server driver is available. Keep Yii2 handoff for now. |
+| Admin Post (Akad) | `http://127.0.0.1:8083/kehadiran/admin-post-list` | `KehadiranController::actionAdminPostList()`, view `admin-post-list.php`, `Tblrscoadminpost`, `Adminposition` | Add local read-only list after staff/admin filters are settled. No edits in first slice. |
+| Pantau Permohonan JAFPIB | `http://127.0.0.1:8083/kehadiran/pantau-permohonan-wfh-admin` | `KehadiranController::actionPantauPermohonanWfhAdmin()`, view `pantau-permohonan-wfh.php`, `TblWfh::search()` | Add local admin WFH application monitor using unrestricted/admin-constrained WFH query. Delete is local Yii3 and POST/CSRF protected in the first `STARS-08` write slice. |
+| Jadual JAFPIB | `http://127.0.0.1:8083/kehadiran/wfh-jadual-admin` | `KehadiranController::actionWfhJadualAdmin()`, view `wfh-jadual-admin.php` | Add local WFH schedule grid with department filter. Reuse supervisor schedule UI where possible. |
+| Statistik WFH | `http://127.0.0.1:8083/kehadiran/statistik-wfh` | `KehadiranController::actionStatistikWfh()`, view `statistik-wfh.php`, `attendance.vw_statistik_wfh` | Add local `/kehadiran/statistik-wfh`; read from `attendance.vw_statistik_wfh`, default to today when no filter is supplied. Export remains legacy until report/export decision. |
+| Vaccination Watchlist | `http://127.0.0.1:8083/vaksinasi/watch-list` | `VaksinasiController` / vaccination module | Keep legacy until the Vaksinasi module owner decides whether it belongs in STARS or Biodata/medical migration scope. |
+| Tidak Hadir Tanpa Cuti (THTC) | `http://127.0.0.1:8083/attendance/absent-list-bpsm` | `AttendanceController::actionAbsentListBpsm()`, view `absent-list-bpsm.php`, `TblThtcSearch::searchbpsm()` | Add local `/attendance/absent-list-bpsm`; BPSM/admin THTC overview. THTC approval/write actions remain Yii2. |
+
+Implementation plan:
+
+- [x] STARS-07C-01 - Administrator Guard And Page Shell
+  - Add explicit administrator guard based on the existing `hasAccess($icno, 3)` role flag.
+  - Add `AdminAction` plus `admin-page.php`, or extend `SupervisorAction` only for truly shared pages.
+  - Confirm ordinary staff, Officer, Supervisor, and HOD users are denied.
+- [x] STARS-07C-02 - Migrate Admin `Staff lists`
+  - Add local `/kehadiran/staff-all`.
+  - Implement active staff directory with department filters.
+  - Keep the page read-only.
+- [x] STARS-07C-03 - Migrate Admin `Warning Letters`
+  - Add local `/kehadiran/color-rpt`.
+  - Implement month/year/color filters from `attendance.tbl_warnakad`.
+  - Keep print route legacy.
+- [x] STARS-07C-04 - Migrate Admin `Statistik WFH`
+  - Add local `/kehadiran/statistik-wfh`.
+  - Read from `attendance.vw_statistik_wfh`.
+  - Default to today when no filter is supplied.
+  - Keep export legacy until `STARS-07D`.
+- [x] STARS-07C-05 - Migrate Admin `THTC` BPSM Overview
+  - Add local `/attendance/absent-list-bpsm`.
+  - Implement read-only BPSM/admin THTC overview.
+  - Keep approval/write actions on Yii2.
+- [x] STARS-07C-06 - Migrate Admin `Statistic (JFPIU)`
+  - Add local `/kehadiran/admin-mth-rpt`.
+  - Reuse monthly report logic with administrator-wide department options.
+  - Verify admin row counts against Yii2.
+- [x] STARS-07C-07 - Migrate Admin WFH Monitor And Schedule
+  - Add local `/kehadiran/pantau-permohonan-wfh-admin`.
+  - Add local `/kehadiran/wfh-jadual-admin`.
+  - Wire delete to the local Yii3 POST/CSRF route from the first `STARS-08` write slice.
+  - Keep edit-day/print actions as Yii2 handoffs.
+- [x] STARS-07C-08 - Migrate Admin `Admin Post (Akad)`
+  - Add local `/kehadiran/admin-post-list`.
+  - Implement read-only academic admin-post list.
+  - Defer edits and cross-module mutations.
+- [x] STARS-07C-09 - Decide Admin SQL Server `Senarai Keluar Pejabat`
+  - Confirm Yii3 SQL Server driver availability for `db3`.
+  - If unavailable, keep `/kehadiran/senarai_keluar_pejabat` as an intentional Yii2 handoff.
+  - If available, add a read-only local page from `vEAttendance`.
+- [x] STARS-07C-10 - Decide Admin `Vaccination Watchlist` Boundary
+  - Confirm whether `vaksinasi/watch-list` belongs to STARS or Vaksinasi/Biodata/medical scope.
+  - Keep legacy unless ownership is approved.
+- [x] STARS-07C-11 - Admin Menu Cutover And Verification
+  - Update `menuSections()` completed admin items from `legacyItem()` to `localItem()`.
+  - Run syntax checks and authenticated admin smoke for completed routes.
+  - Record row-count comparisons and deferred handoffs.
+
+Acceptance:
+
+- Ordinary staff, officers, and HOD users cannot access administrator pages.
+- Admin Yii3 row counts match Yii2 for selected admin identities.
+- Admin pages are read-only: no create/update/delete, no bulk approval, no export mutation.
+- SQL Server-dependent pages remain clearly marked as Yii2 handoffs until the driver gap is closed.
+
+### STARS-07D - Reports Menu And Export Decision
+
+Goal:
+
+- Convert the Reports top-menu group without prematurely porting mPDF/PDF generation.
+
+Yii2 source mapping:
+
+| Menu item | Current Yii3 menu URL | Yii2 source | Yii3 migration target |
+|---|---|---|---|
+| By Month (Range) | `http://127.0.0.1:8083/kehadiran/range-month` | `KehadiranController::actionRangeMonth()`, view `range-month.php`, redirects to `gen-yearly-pdf-rpt` | Keep legacy until the PDF/export standard is decided, or add a local read-only report-parameter page that links to Yii2 PDF generation. |
+| Monthly Reports | `http://127.0.0.1:8083/kehadiran/sup-mth-rpt` | `KehadiranController::actionSupMthRpt()` | The page already exists locally under Attendance Supervisor. For admin `Reports`, validate admin scope then change this menu item to local `/kehadiran/sup-mth-rpt`. |
+| Yearly Reports | `http://127.0.0.1:8083/kehadiran/sup-year-rpt` | `KehadiranController::actionSupYearRpt()` | The page already exists locally under Attendance Supervisor. For admin `Reports`, validate admin scope then change this menu item to local `/kehadiran/sup-year-rpt`. |
+
+Implementation plan:
+
+- [x] STARS-07D-01 - Reports Export/PDF Decision
+  - Decide whether Yii3 report exports should be HTML-first, CSV-first, or PDF-compatible with old mPDF output.
+  - Record the decision before moving PDF/report generator links.
+- [x] STARS-07D-02 - Reports Monthly/Yearly Local Cutover
+  - Validate admin access to local `/kehadiran/sup-mth-rpt` and `/kehadiran/sup-year-rpt`.
+  - Convert Reports `Monthly Reports` and `Yearly Reports` menu items to local links.
+- [x] STARS-07D-03 - Reports `By Month (Range)` Handling
+  - Keep Yii2 if old `gen-yearly-pdf-rpt` remains authoritative.
+  - Or add a local read-only report-parameter page that clearly hands PDF generation to Yii2.
+- [x] STARS-07D-04 - Main Menu Route Map And Legacy Badge Cleanup
+  - Update `MenuService::LOCAL_ROUTE_MAP` for migrated STARS routes when DB-backed main menu should also route locally.
+  - Remove `Yii2` badges only from links that are genuinely local.
+  - Record intentionally legacy report/export links.
+
+Acceptance:
+
+- Admin Reports links that point local reuse existing read pages safely.
+- `By Month (Range)` remains functional through Yii2 while PDF/export policy is unresolved.
+- No broken report link appears in the STARS top menu.
 
 ## Executable Tasks
 
@@ -564,14 +828,14 @@ Current Yii3 Officer menu items and Yii2 mapping:
 
 | Menu item | Current Yii3 URL | Old Yii2 source | Behavior | Yii3 migration target |
 |---|---|---|---|---|
-| Approval (Reason) | `http://127.0.0.1:8083/kehadiran/senarai_tindakan` | `actionSenarai_tindakan()`, view `senarai_tindakan.php`, `TblRekod` | Lists `attendance.tbl_rekod` rows assigned to the officer with `app_by = current/delegated icno` and `remark_status = ENTRY`; old page supports bulk checkbox approval by POST, notification writes, and individual `kehadiran/pengesahan` action. | Split. First Yii3 read-only list with Yii2 handoff buttons for `pengesahan`; bulk approve moves to `STARS-08` with POST/CSRF, notifications, audit/log parity, and dashboard task refresh. |
+| Approval (Reason) | `http://127.0.0.1:8083/kehadiran/senarai_tindakan` | `actionSenarai_tindakan()`, view `senarai_tindakan.php`, `TblRekod` | Lists `attendance.tbl_rekod` rows assigned to the officer with `app_by = current/delegated icno` and `remark_status = ENTRY`; old page supports bulk checkbox approval by POST, notification writes, and individual `kehadiran/pengesahan` action. | Yii3 read list plus local Yii3 individual `pengesahan` review. Bulk approve remains in `STARS-08` follow-up with transaction/audit verification. |
 | Card Colour Report | `http://127.0.0.1:8083/kehadiran/staff-color-card` | `actionStaffColorCard()`, view `staff-color-card.php`, `SetPegawai`, `TblWarnaKad::WarnaKadSemasa()` | Lists supervised staff from `hrm.cuti_set_pegawai` where current ICNO is `peraku_icno` or `pelulus_icno`; shows current month card non-compliance, accepted, rejected, and card colour. | Good early read-only route. Add `GET /kehadiran/staff-color-card`; use `attendance-standard-toolbar`, current month/year context, and local table. |
 | Attendance report | `http://127.0.0.1:8083/kehadiran/pantau-kehadiran` | `actionPantauKehadiran()`, view `pantau-kehadiran.php`, `SetPegawai`, `TblRekod`, `TblWp` | Date-filtered daily attendance monitor for supervised staff; shows WBB, in/out time, leave/outstation/WFH, non-compliance status, map links, detail modal, staff attendance report link, and staff-history modal. | Read-only route in `STARS-07`; reuse Staff daily-row helpers and `attendance-standard-filter` date picker. Keep detail, report print, and staff history as Yii2 handoffs until their local pages exist. |
 | Monthly report | `http://127.0.0.1:8083/kehadiran/monthly-summary` | `actionMonthlySummary()`, view `monthly-summary.php`, `SetPegawai`, `TblRekod` | Month-filtered supervised-staff summary: working hours, completed working days, late in, early out, incomplete, absent, external. Old code defaults current year and selected/current month. | Read-only route in `STARS-07`; use local month/year filters and summary table. Consider adding explicit year filter instead of hidden current-year behavior. |
-| Senarai Tindakan WFH | `http://127.0.0.1:8083/kehadiran/wfh-lulus` | `actionWfhLulus()`, view `wfh-lulus.php`, `TblWfh` | Lists WFH applications where `app_by = current icno` and `status = ENTRY`; old page supports bulk approve by POST and single approve/reject through `wfh-lulus-tindakan`. | Split. First read-only pending WFH approval list with Yii2 handoff to `wfh-lulus-tindakan`; bulk approval/write migration belongs in `STARS-08` or WFH write slice. |
-| Senarai Permohonan WFH | `http://127.0.0.1:8083/kehadiran/pantau-permohonan-wfh-pegawai` | `actionPantauPermohonanWfhPegawai()`, view `pantau-permohonan-wfh.php`, `TblWfh::searchAsPegawai()` | Lists up to 1000 WFH applications with `YEAR(start_date) > 2021`, `app_by = current icno`, excluding remarks like `ADDED BY PENYELIA`; supports filters/export/Kartik GridView and delete action `delete-wfh`. | Read-only monitor route; no delete in first Yii3 pass. Use `attendance-standard-toolbar`, status/name filters if needed, and Yii2 handoff for delete until write policy is decided. |
+| Senarai Tindakan WFH | `http://127.0.0.1:8083/kehadiran/wfh-lulus` | `actionWfhLulus()`, view `wfh-lulus.php`, `TblWfh` | Lists WFH applications where `app_by = current icno` and `status = ENTRY`; old page supports bulk approve by POST and single approve/reject through `wfh-lulus-tindakan`. | Yii3 read list plus local Yii3 single approve/reject route. Bulk approval remains deferred. |
+| Senarai Permohonan WFH | `http://127.0.0.1:8083/kehadiran/pantau-permohonan-wfh-pegawai` | `actionPantauPermohonanWfhPegawai()`, view `pantau-permohonan-wfh.php`, `TblWfh::searchAsPegawai()` | Lists up to 1000 WFH applications with `YEAR(start_date) > 2021`, `app_by = current icno`, excluding remarks like `ADDED BY PENYELIA`; supports filters/export/Kartik GridView and delete action `delete-wfh`. | Read monitor route with local Yii3 delete action protected by POST/CSRF from migrated pages. |
 | Staff Seliaan | `http://127.0.0.1:8083/cuti/pegawai/staffonleave` | `cuti\PegawaiController::actionStaffonleave()`, view `cuti/pegawai/staffonleave.php`, `TblRecords::TeamList()` | Uses external/internal Registrar API `https://registrar.ums.edu.my/staff/web/api/dashboard/team?icno=...`; shows team name, designation, service status, time in/out, and leave/outstation text. | Treat as cross-module dependency. Either keep Yii2 handoff initially, or create a Yii3 proxy/service only after confirming API availability/auth and failure behavior. Do not block core STARS Officer migration on this. |
-| Tidak Hadir Tanpa Cuti (THTC) | `http://127.0.0.1:8083/kehadiran/absent-list-kp` | `actionAbsentListKp()`, view `absent-list-kp.php`, `TblThtcSearch::searchkp()` | Department PP-only page: validates current staff is `department.pp`; lists `attendance.tbl_thtc` joined to records and biodata for current department, excluding status `6`; shows absent date/day, staff name, absent remark, THTC remark, leave marker, supporting doc, THTC status, requested date. | Read-only route after role/scope guard is implemented. Use department PP access check, `attendance-standard-toolbar`, local table, and keep THTC verify/write actions in Yii2 until THTC write slice. |
+| Tidak Hadir Tanpa Cuti (THTC) | `http://127.0.0.1:8083/kehadiran/absent-list-kp` | `actionAbsentListKp()`, view `absent-list-kp.php`, `TblThtcSearch::searchkp()` | Department PP-only page: validates current staff is `department.pp`; lists `attendance.tbl_thtc` joined to records and biodata for current department, excluding status `6`; shows absent date/day, staff name, absent remark, THTC remark, leave marker, supporting doc, THTC status, requested date. | Read list with department PP access check and local Yii3 THTC review actions where applicable. |
 
 Officer data and query dependencies:
 
@@ -604,18 +868,16 @@ Officer UI standard:
 - All Yii3 Officer attendance pages must use the `attendance-standard-*` toolbar standard.
 - Pages with filters use `attendance-standard-filter`, `attendance-standard-fields`, and `attendance-standard-actions`.
 - Pages with queues/counts use `attendance-standard-count`.
-- Approval/write queues should show clear status badges and local read-only data, while write actions remain explicit Yii2 handoff buttons until the write slice.
+- Approval/write queues should show clear status badges and local Yii3 action buttons for migrated write routes.
 - Do not reintroduce Yii2/Kartik/GridView UI patterns; use local `data-table`, `status-badge`, `grid-action`, and Lucide icons.
 
-Officer write flows deferred:
+Officer write flow status:
 
-- `kehadiran/pengesahan`
-- bulk approval POST in `senarai_tindakan`
-- `kehadiran/wfh-lulus-tindakan`
-- bulk WFH approval POST in `wfh-lulus`
-- `kehadiran/delete-wfh`
-- THTC verify/approval actions
-- notifications, audit logs, dashboard pending-task refresh, and email/API side effects
+- `kehadiran/pengesahan` is local Yii3.
+- `kehadiran/wfh-lulus-tindakan` is local Yii3.
+- `kehadiran/delete-wfh` is local Yii3 and POST/CSRF protected from migrated monitor pages.
+- `kehadiran/verify-thtc-sv` and `kehadiran/approve-thtc` are local Yii3 review forms.
+- Bulk approval POST in `senarai_tindakan`, bulk WFH approval POST in `wfh-lulus`, staff upload/write flows, WBB setup, and full audit/dashboard parity remain deferred.
 
 ## Attendance Supervisor Top Menu Analysis
 
@@ -643,8 +905,8 @@ Current Yii3 Attendance Supervisor menu items and Yii2 mapping:
 | Manage Supervisor/Staff | `http://127.0.0.1:8083/kehadiran-admin/manage-shift-supervisor` | `KehadiranAdminController::actionManageShiftSupervisor()`, view `manage-shift-supervisor.php`, `Tblstaff::search()` | Admin-only list/search across shift supervisors and their staff. | Keep legacy initially, or migrate under admin/supervisor hybrid after admin guard and filters are standardized. |
 | Senarai Bulanan WFH | `http://127.0.0.1:8083/kehadiran/wfh-by-mth` | `actionWfhByMth()`, view `wfh-by-mth.php`, `AksesPengguna::kakitanganSeliaan()`, `TblWfh::wfhByDay()` | Month/day WFH vs WFO totals and percentages, with edit-day action. | Read-only route; edit-day remains Yii2 write handoff. |
 | Jadual WFH | `http://127.0.0.1:8083/kehadiran/wfh-jadual` | `actionWfhJadual()`, view `wfh-jadual.php`, `AksesPengguna::kakitanganSeliaan()`, `TblWfh::isWfh()` | Month grid per staff with H/O markers and WFH percentage per day; print route exists. | Read-only route; print remains legacy until PDF standard is decided. |
-| Pantau Permohonan WFH | `http://127.0.0.1:8083/kehadiran/pantau-permohonan-wfh` | `actionPantauPermohonanWfh()`, view `pantau-permohonan-wfh.php`, `TblWfh::search()` | Lists WFH applications for staff under supervisor scope, excluding `ADDED BY PENYELIA`, with status/name/remark filters and delete action. | Read-only monitor route; reuse Officer WFH application monitor with supervisor staff ICNO scope. Delete remains Yii2 handoff. |
-| Tidak Hadir Tanpa Cuti (THTC) | `http://127.0.0.1:8083/kehadiran/absent-list-sv` | `actionAbsentListSv()`, view `absent-list-sv.php`, `TblThtcSearch::search()` | Supervisor verification list where `icno_verifier` matches current supervisor, excluding status `6`; write action is `verify-thtc-sv`. | Read-only list with Yii2 verify handoff. Write migration belongs with THTC workflow slice. |
+| Pantau Permohonan WFH | `http://127.0.0.1:8083/kehadiran/pantau-permohonan-wfh` | `actionPantauPermohonanWfh()`, view `pantau-permohonan-wfh.php`, `TblWfh::search()` | Lists WFH applications for staff under supervisor scope, excluding `ADDED BY PENYELIA`, with status/name/remark filters and delete action. | Read monitor route with local Yii3 delete action protected by POST/CSRF from migrated pages. |
+| Tidak Hadir Tanpa Cuti (THTC) | `http://127.0.0.1:8083/kehadiran/absent-list-sv` | `actionAbsentListSv()`, view `absent-list-sv.php`, `TblThtcSearch::search()` | Supervisor verification list where `icno_verifier` matches current supervisor, excluding status `6`; write action is `verify-thtc-sv`. | Read list plus local Yii3 supervisor verification review form. |
 
 Attendance Supervisor data and query dependencies:
 
@@ -720,7 +982,7 @@ Attendance Supervisor task-by-task execution plan:
    - Handoff add/remove/create/update/print actions.
 11. THTC Supervisor:
    - Migrate `absent-list-sv` read-only.
-   - Handoff `verify-thtc-sv` to Yii2.
+   - Wire `verify-thtc-sv` to the local Yii3 review route from the first `STARS-08` write slice.
 12. Deferred routes:
    - `shield-status-list`: wait for shield table/relation mapping.
    - `kehadiran-admin/manage-shift-supervisor`: wait for admin/shift-management slice.
@@ -731,12 +993,10 @@ Supervisor write flows deferred:
 - `kehadiran/wbb-list`
 - `kehadiran/kemaskini-peraku`
 - `kehadiran/wfh-edit-day`
-- `kehadiran/delete-wfh`
 - `kehadiran/staff-shift-list` POST add staff
 - `kehadiran/remove-staff`
 - `kehadiran/create-shift`
 - `kehadiran/update-shift`
-- `kehadiran/verify-thtc-sv`
 - print/PDF/export routes until the reporting standard is set
 
 Recommended first execution slice:
@@ -813,7 +1073,7 @@ Implementation notes:
   - Authenticated browser smoke returned HTTP 200 for every migrated Staff route using `staff-940402125181`.
   - Static `/images/kad_warna.png` and `/files/garis_panduan_kehadiran.pdf` returned HTTP 200.
 
-### STARS-07 - Officer Read Reports
+### STARS-07 - Officer And Supervisor Read Reports
 
 - [x] Completion
 
@@ -862,7 +1122,7 @@ Implemented on 2026-11-19:
 - Added local routes for `/kehadiran/staff-color-card`, `/kehadiran/pantau-kehadiran`, `/kehadiran/monthly-summary`, `/kehadiran/pantau-permohonan-wfh-pegawai`, `/kehadiran/wfh-lulus`, `/kehadiran/senarai_tindakan`, and `/kehadiran/absent-list-kp`.
 - Updated the Officer menu to local Yii3 links for migrated read pages.
 - Kept `/cuti/pegawai/staffonleave` as a Yii2 handoff because it depends on the Registrar team API.
-- Kept approval/delete/write actions as Yii2 handoffs from the read-only Yii3 pages.
+- Migrated the first individual approval/delete actions to local Yii3 routes; heavier bulk/write/export routes remain deferred.
 - Verification:
   - `php -l` passed for changed PHP files.
   - Service smoke for Officer ICNO `790608125733` returned 61 supervised staff rows across card, monthly, and daily reports.
@@ -870,10 +1130,11 @@ Implemented on 2026-11-19:
   - Apache unauthenticated smoke redirects all new routes to `/hronline/login` cleanly.
   - Authenticated Apache smoke using Officer ICNO `790608125733` returned HTTP 200 for all new Officer routes and confirmed the Attendance UI standard toolbar renders.
 
-Future read-report slices:
+Remaining read-report slices:
 
-- Department Chief: `/kehadiran/kj-pantau-kehadiran`, `/kehadiran/wfh-jadual-kj`, `/kehadiran/list-kj`.
-- Attendance Supervisor/Admin: `/kehadiran/sup-mth-rpt`, `/kehadiran/sup-year-rpt`, `/kehadiran/sup-year-performance-rpt`, `/kehadiran/senarai-warna-kad`, `/kehadiran/shield-status-list`, `/kehadiran/statistik-wfh`.
+- Head of Department: tracked in `STARS-07B`.
+- Administrator: tracked in `STARS-07C`.
+- Reports/export behavior: tracked in `STARS-07D`.
 
 ### STARS-08 - Reason And Approval Writes
 
@@ -914,11 +1175,20 @@ Verification:
 
 Done when:
 
-- [ ] Selected write routes are POST/CSRF protected where data changes.
-- [ ] Status transitions match old allowed states.
-- [ ] Authorization is scoped to the current identity and role.
+- [x] First write slice routes are POST/CSRF protected where data changes.
+- [x] First write slice status transitions match old allowed states.
+- [x] First write slice authorization is scoped to the current identity and role.
 - [ ] Notification/log side effects are verified on test/dummy rows.
-- [ ] No GET route mutates data.
+- [x] No first-slice GET route mutates data.
+
+Execution notes:
+
+- Added `src/Web/Kehadiran/WriteAction.php` and `src/Web/Kehadiran/write-page.php`.
+- Added local Yii3 write routes for `/kehadiran/pengesahan`, `/kehadiran/wfh-lulus-tindakan`, `/kehadiran/delete-wfh`, `/kehadiran/verify-thtc-sv`, and `/kehadiran/approve-thtc`.
+- Added AttendanceService command methods for individual reason approval, WFH approval/reject, WFH delete, supervisor THTC verification, and HOD THTC approval.
+- Wrapped first-slice update/delete commands in the project transaction pattern.
+- Migrated visible WFH delete buttons to POST forms with CSRF tokens.
+- Kept notification/pending-task refresh best-effort; dummy-row verification is still required before marking full `STARS-08` complete.
 
 ### STARS-09 - WFH/WFO And Shift Admin
 
