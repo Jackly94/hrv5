@@ -37,6 +37,7 @@ $this->setTitle('Profil Staf - ' . $applicationParams->name);
     $fields = $profile['fields'];
     /** @var list<array{label: string, url: string, external: bool}> $sections */
     $sections = $profile['sections'];
+    $adminMode = ($profile['mode'] ?? 'user') === 'admin';
     ?>
 
     <main class="profile-page">
@@ -46,10 +47,17 @@ $this->setTitle('Profil Staf - ' . $applicationParams->name);
                 <h1>Profil Staf</h1>
                 <p>Maklumat dan rekod kakitangan</p>
             </div>
-            <a class="button-link button-link-secondary" href="/gambar-profile/semakan">
-                <i data-lucide="image-up"></i>
-                <span>Kemaskini Gambar</span>
-            </a>
+            <?php if ($adminMode): ?>
+                <a class="button-link button-link-secondary" href="/biodata/index">
+                    <i data-lucide="arrow-left"></i>
+                    <span>Kembali</span>
+                </a>
+            <?php else: ?>
+                <a class="button-link button-link-secondary" href="/gambar-profile/semakan">
+                    <i data-lucide="image-up"></i>
+                    <span>Kemaskini Gambar</span>
+                </a>
+            <?php endif; ?>
         </div>
 
         <div class="profile-hero page-card-section">

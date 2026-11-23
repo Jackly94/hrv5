@@ -36,7 +36,8 @@ readonly class ProfileAction
             $icno = (string) ($query['id'] ?? $query['icno'] ?? $currentIcno);
         }
 
-        $profile = $icno === '' ? null : $this->profileService->profileForIcno($icno);
+        $mode = $path === '/biodata/adminview' ? 'admin' : 'user';
+        $profile = $icno === '' ? null : $this->profileService->profileForIcno($icno, $mode);
         if ($profile === null) {
             return $this->viewRenderer
                 ->render(__DIR__ . '/template', [

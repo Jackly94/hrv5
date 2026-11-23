@@ -142,6 +142,66 @@ document.querySelectorAll('[data-confirm-submit]').forEach((form) => {
     });
 });
 
+document.querySelectorAll('[data-tabs]').forEach((tabsRoot) => {
+    const tabs = Array.from(tabsRoot.querySelectorAll('[role="tab"]'));
+    const panels = Array.from(tabsRoot.querySelectorAll('[role="tabpanel"]'));
+
+    if (tabs.length === 0 || panels.length === 0) {
+        return;
+    }
+
+    const selectTab = (selectedTab, focusTab = false) => {
+        tabs.forEach((tab) => {
+            const isSelected = tab === selectedTab;
+            const panelId = tab.getAttribute('data-tab-target');
+            const panel = panelId ? panels.find((item) => item.id === panelId) : null;
+
+            tab.classList.toggle('is-active', isSelected);
+            tab.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+            tab.tabIndex = isSelected ? 0 : -1;
+
+            if (panel) {
+                panel.hidden = !isSelected;
+            }
+        });
+
+        if (focusTab) {
+            selectedTab.focus();
+        }
+    };
+
+    tabsRoot.classList.add('is-ready');
+    selectTab(tabs.find((tab) => tab.getAttribute('aria-selected') === 'true') || tabs[0]);
+
+    tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => selectTab(tab));
+        tab.addEventListener('keydown', (event) => {
+            const movement = {
+                ArrowLeft: -1,
+                ArrowUp: -1,
+                ArrowRight: 1,
+                ArrowDown: 1,
+            }[event.key];
+
+            if (movement) {
+                event.preventDefault();
+                selectTab(tabs[(index + movement + tabs.length) % tabs.length], true);
+                return;
+            }
+
+            if (event.key === 'Home') {
+                event.preventDefault();
+                selectTab(tabs[0], true);
+            }
+
+            if (event.key === 'End') {
+                event.preventDefault();
+                selectTab(tabs[tabs.length - 1], true);
+            }
+        });
+    });
+});
+
 const flashMessages = {
     created: {
         title: 'Berjaya disimpan',

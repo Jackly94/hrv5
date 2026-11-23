@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Shared;
 
+use App\Shared\Biodata\Support\BiodataSectionUrlService;
 use Yiisoft\Db\Connection\ConnectionInterface;
 
 final readonly class BiodataProfileService
@@ -13,6 +14,7 @@ final readonly class BiodataProfileService
     public function __construct(
         private ConnectionInterface $db,
         private StaffDateFormatter $dateFormatter,
+        private BiodataSectionUrlService $sectionUrls,
     ) {}
 
     /**
@@ -31,7 +33,7 @@ final readonly class BiodataProfileService
     /**
      * @return array<string, mixed>|null
      */
-    public function profileForIcno(string $icno): ?array
+    public function profileForIcno(string $icno, string $mode = 'user'): ?array
     {
         $row = $this->profileRow($icno);
         if ($row === null) {
@@ -50,7 +52,8 @@ final readonly class BiodataProfileService
                 'endDate' => $this->formatDate($row['endDateLantik'] ?? null),
             ],
             'fields' => $this->fields($row, $icno),
-            'sections' => $this->sections(),
+            'mode' => $mode,
+            'sections' => $this->sections($mode, $icno),
         ];
     }
 
@@ -723,25 +726,49 @@ final readonly class BiodataProfileService
     /**
      * @return list<array{label: string, url: string, external: bool}>
      */
-    private function sections(): array
+    private function sections(string $mode, string $icno): array
     {
+        if ($mode === 'admin') {
+            $idQuery = static fn (string $path): string => $path . '?' . http_build_query(['id' => $icno]);
+
+            return [
+                ['label' => 'Biodata', 'url' => $idQuery('/biodata/lihatbiodatakakitangan'), 'external' => false],
+                ['label' => 'Alamat', 'url' => $this->sectionUrls->admin('alamat', $icno), 'external' => false],
+                ['label' => 'Pendidikan', 'url' => $this->sectionUrls->admin('pendidikan', $icno), 'external' => false],
+                ['label' => 'Bahasa', 'url' => $this->sectionUrls->admin('bahasa', $icno), 'external' => false],
+                ['label' => 'Keahlian', 'url' => $this->sectionUrls->admin('keahlian', $icno), 'external' => false],
+                ['label' => 'Anugerah', 'url' => $this->sectionUrls->admin('anugerah', $icno), 'external' => false],
+                ['label' => 'Paspot & Permit Kerja', 'url' => $this->sectionUrls->admin('pasport-permit', $icno), 'external' => false],
+                ['label' => 'Lesen', 'url' => $this->sectionUrls->admin('lesen', $icno), 'external' => false],
+                ['label' => 'Akaun', 'url' => $this->sectionUrls->admin('akaun', $icno, 'admin-senarai-akaun'), 'external' => false],
+                ['label' => 'Kecacatan', 'url' => $this->sectionUrls->admin('kecacatan', $icno), 'external' => false],
+                ['label' => 'Pengalaman Kerja', 'url' => $this->sectionUrls->admin('pengalamankerja', $icno), 'external' => false],
+                ['label' => 'Sejarah Perubatan', 'url' => $this->sectionUrls->admin('sejarahperubatan', $icno), 'external' => false],
+                ['label' => 'Keluarga', 'url' => $this->sectionUrls->admin('keluarga', $icno), 'external' => false],
+                ['label' => 'Bidang Kepakaran', 'url' => $this->sectionUrls->admin('bidangkepakaran', $icno), 'external' => false],
+                ['label' => 'Penetapan Pengguna', 'url' => $this->sectionUrls->appendQuery('/biodata/penetapanpengguna', ['icno' => $icno]), 'external' => false],
+                ['label' => 'Program Vaksinasi', 'url' => $this->sectionUrls->admin('vaksinasi', $icno, 'admin-view-status-vaksinasi'), 'external' => false],
+                ['label' => 'Kelayakan Profesional', 'url' => $this->sectionUrls->admin('kelayakan-profesional', $icno, 'admin-view'), 'external' => false],
+            ];
+        }
+
         return [
             ['label' => 'Biodata', 'url' => '/biodata/lihatbiodata', 'external' => false],
-            ['label' => 'Alamat', 'url' => '/alamat/view', 'external' => false],
-            ['label' => 'Pendidikan', 'url' => '/pendidikan/view', 'external' => false],
-            ['label' => 'Bahasa', 'url' => '/bahasa/view', 'external' => false],
-            ['label' => 'Keahlian', 'url' => '/badan-profesional/view', 'external' => false],
-            ['label' => 'Anugerah', 'url' => '/anugerah/view', 'external' => false],
-            ['label' => 'Paspot & Permit Kerja', 'url' => '/pasport-permit/view', 'external' => false],
-            ['label' => 'Lesen', 'url' => '/lesen/view', 'external' => false],
-            ['label' => 'Akaun', 'url' => '/akaun/senarai-akaun', 'external' => false],
-            ['label' => 'Kecacatan', 'url' => '/kecacatan/view', 'external' => false],
-            ['label' => 'Pengalaman Kerja', 'url' => '/pengalamankerja/view', 'external' => false],
-            ['label' => 'Sejarah Perubatan', 'url' => '/sejarahperubatan/view', 'external' => false],
-            ['label' => 'Keluarga', 'url' => '/keluarga/view', 'external' => false],
-            ['label' => 'Bidang Kepakaran', 'url' => '/bidangkepakaran/view', 'external' => false],
-            ['label' => 'Program Vaksinasi', 'url' => '/vaksinasi/index', 'external' => false],
-            ['label' => 'Kelayakan Profesional', 'url' => '/kelayakan-profesional/view', 'external' => false],
+            ['label' => 'Alamat', 'url' => $this->sectionUrls->user('alamat'), 'external' => false],
+            ['label' => 'Pendidikan', 'url' => $this->sectionUrls->user('pendidikan'), 'external' => false],
+            ['label' => 'Bahasa', 'url' => $this->sectionUrls->user('bahasa'), 'external' => false],
+            ['label' => 'Keahlian', 'url' => $this->sectionUrls->user('keahlian'), 'external' => false],
+            ['label' => 'Anugerah', 'url' => $this->sectionUrls->user('anugerah'), 'external' => false],
+            ['label' => 'Paspot & Permit Kerja', 'url' => $this->sectionUrls->user('pasport-permit'), 'external' => false],
+            ['label' => 'Lesen', 'url' => $this->sectionUrls->user('lesen'), 'external' => false],
+            ['label' => 'Akaun', 'url' => $this->sectionUrls->user('akaun', 'senarai-akaun'), 'external' => false],
+            ['label' => 'Kecacatan', 'url' => $this->sectionUrls->user('kecacatan'), 'external' => false],
+            ['label' => 'Pengalaman Kerja', 'url' => $this->sectionUrls->user('pengalamankerja'), 'external' => false],
+            ['label' => 'Sejarah Perubatan', 'url' => $this->sectionUrls->user('sejarahperubatan'), 'external' => false],
+            ['label' => 'Keluarga', 'url' => $this->sectionUrls->user('keluarga'), 'external' => false],
+            ['label' => 'Bidang Kepakaran', 'url' => $this->sectionUrls->user('bidangkepakaran'), 'external' => false],
+            ['label' => 'Program Vaksinasi', 'url' => $this->sectionUrls->user('vaksinasi', 'index'), 'external' => false],
+            ['label' => 'Kelayakan Profesional', 'url' => $this->sectionUrls->user('kelayakan-profesional'), 'external' => false],
         ];
     }
 

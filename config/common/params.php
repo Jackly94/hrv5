@@ -10,8 +10,23 @@ use Yiisoft\Router\CurrentRoute;
 use Yiisoft\Router\UrlGeneratorInterface;
 use Yiisoft\Yii\View\Renderer\CsrfViewInjection;
 
+$mediahost = [
+    'baseUrl' => 'https://mediahost.ums.edu.my',
+    'uploaderId' => '0302',
+    'connectTimeout' => 5,
+    'timeout' => 60,
+];
+$mediahostLocal = __DIR__ . '/mediahost.local.php';
+if (is_file($mediahostLocal)) {
+    $localMediahost = require $mediahostLocal;
+    if (is_array($localMediahost)) {
+        $mediahost = array_replace_recursive($mediahost, $localMediahost);
+    }
+}
+
 return [
     'application' => require __DIR__ . '/application.php',
+    'mediahost' => $mediahost,
 
     'yiisoft/aliases' => [
         'aliases' => require __DIR__ . '/aliases.php',

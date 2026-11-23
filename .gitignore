@@ -27,3 +27,5 @@ c3.php
 
 # Local environment configuration
 .env
+config/common/mediahost.local.php
+config/mediahost.local.php

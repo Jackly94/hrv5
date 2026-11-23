@@ -8,14 +8,18 @@ use Psr\Http\Message\UploadedFileInterface;
 
 final readonly class MediaHostFileService
 {
-    private const UPLOAD_URL = 'https://mediahost.ums.edu.my/api/v1/upload';
-    private const DELETE_URL = 'https://mediahost.ums.edu.my/api/v1/delete-file';
-    private const VIEW_URL = 'https://mediahost.ums.edu.my/api/v1/viewFile/';
-    private const DOWNLOAD_URL = 'https://mediahost.ums.edu.my/api/v1/downloadFile/';
-    private const INFO_URL = 'https://mediahost.ums.edu.my/api/v1/getFileInfo/';
-    private const SECRET_KEY = 'nWuRQcGNm1FCDew3VpQK83DVFsLklE';
-    private const PUBLIC_KEY = 'ca2hNOYNhsaLL0OcH1hXsNYfTG6lO2';
-    private const UPLOADER_ID = '0302';
+    private const DEFAULT_BASE_URL = 'https://mediahost.ums.edu.my';
+    private const DEFAULT_UPLOADER_ID = '0302';
+    private const UPLOAD_PATH = '/api/v1/upload';
+    private const DELETE_PATH = '/api/v1/delete-file';
+    private const VIEW_PATH = '/api/v1/viewFile/';
+    private const DOWNLOAD_PATH = '/api/v1/downloadFile/';
+    private const INFO_PATH = '/api/v1/getFileInfo/';
+
+    /**
+     * @param array<string, mixed> $config
+     */
+    public function __construct(private array $config = []) {}
 
     /**
      * @return array{success: bool, hash?: string, message?: string}
@@ -36,6 +40,11 @@ final readonly class MediaHostFileService
             return ['success' => false, 'message' => 'Nama fail tidak sah.'];
         }
 
+        $credentials = $this->credentials();
+        if ($credentials === null) {
+            return ['success' => false, 'message' => 'Tetapan MediaHost tidak lengkap.'];
+        }
+
         $tempPath = tempnam(sys_get_temp_dir(), 'hronline_upload_');
         if ($tempPath === false) {
             return ['success' => false, 'message' => 'Fail sementara tidak dapat disediakan.'];
@@ -45,7 +54,7 @@ final readonly class MediaHostFileService
             $file->getStream()->rewind();
             file_put_contents($tempPath, $file->getStream()->getContents());
 
-            $curl = curl_init(self::UPLOAD_URL);
+            $curl = curl_init($this->endpoint(self::UPLOAD_PATH));
             if ($curl === false) {
                 return ['success' => false, 'message' => 'File upload service is unavailable.'];
             }
@@ -53,11 +62,12 @@ final readonly class MediaHostFileService
             curl_setopt_array($curl, [
                 CURLOPT_POST => true,
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 60,
+                CURLOPT_CONNECTTIMEOUT => $this->intConfig('connectTimeout', 5),
+                CURLOPT_TIMEOUT => $this->intConfig('timeout', 60),
                 CURLOPT_POSTFIELDS => [
-                    'secret_key' => self::SECRET_KEY,
-                    'public_key' => self::PUBLIC_KEY,
-                    'uploader_id' => self::UPLOADER_ID,
+                    'secret_key' => $credentials['secretKey'],
+                    'public_key' => $credentials['publicKey'],
+                    'uploader_id' => $credentials['uploaderId'],
                     'user_id' => $userId,
                     'autocreatedirectory' => '1',
                     'directory' => $directory,
@@ -118,7 +128,12 @@ final readonly class MediaHostFileService
             return ['success' => false, 'message' => 'File delete service is unavailable on this server.'];
         }
 
-        $curl = curl_init(self::DELETE_URL);
+        $credentials = $this->credentials();
+        if ($credentials === null) {
+            return ['success' => false, 'message' => 'Tetapan MediaHost tidak lengkap.'];
+        }
+
+        $curl = curl_init($this->endpoint(self::DELETE_PATH));
         if ($curl === false) {
             return ['success' => false, 'message' => 'File delete service is unavailable.'];
         }
@@ -126,11 +141,12 @@ final readonly class MediaHostFileService
         curl_setopt_array($curl, [
             CURLOPT_POST => true,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 60,
+            CURLOPT_CONNECTTIMEOUT => $this->intConfig('connectTimeout', 5),
+            CURLOPT_TIMEOUT => $this->intConfig('timeout', 60),
             CURLOPT_POSTFIELDS => [
-                'secret_key' => self::SECRET_KEY,
-                'public_key' => self::PUBLIC_KEY,
-                'uploader_id' => self::UPLOADER_ID,
+                'secret_key' => $credentials['secretKey'],
+                'public_key' => $credentials['publicKey'],
+                'uploader_id' => $credentials['uploaderId'],
                 'user_id' => $userId,
                 'hashcode' => $hashcode,
             ],
@@ -163,14 +179,14 @@ final readonly class MediaHostFileService
     {
         $hashcode = trim($hashcode);
 
-        return $hashcode === '' || $hashcode === 'deleted' ? '' : self::VIEW_URL . rawurlencode($hashcode);
+        return $hashcode === '' || $hashcode === 'deleted' ? '' : $this->endpoint(self::VIEW_PATH) . rawurlencode($hashcode);
     }
 
     public function downloadUrl(string $hashcode): string
     {
         $hashcode = trim($hashcode);
 
-        return $hashcode === '' || $hashcode === 'deleted' ? '' : self::DOWNLOAD_URL . rawurlencode($hashcode);
+        return $hashcode === '' || $hashcode === 'deleted' ? '' : $this->endpoint(self::DOWNLOAD_PATH) . rawurlencode($hashcode);
     }
 
     /**
@@ -187,7 +203,7 @@ final readonly class MediaHostFileService
             return ['exists' => false, 'message' => 'File info service is unavailable on this server.'];
         }
 
-        $curl = curl_init(self::INFO_URL . rawurlencode($hashcode));
+        $curl = curl_init($this->endpoint(self::INFO_PATH) . rawurlencode($hashcode));
         if ($curl === false) {
             return ['exists' => false, 'message' => 'File info service is unavailable.'];
         }
@@ -195,6 +211,7 @@ final readonly class MediaHostFileService
         curl_setopt_array($curl, [
             CURLOPT_HTTPGET => true,
             CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => $this->intConfig('connectTimeout', 5),
             CURLOPT_TIMEOUT => 20,
         ]);
 
@@ -220,5 +237,57 @@ final readonly class MediaHostFileService
         $name = $info['file_name'] ?? null;
 
         return is_scalar($name) && trim((string) $name) !== '' ? (string) $name : '-';
+    }
+
+    private function endpoint(string $path): string
+    {
+        return $this->baseUrl() . $path;
+    }
+
+    private function baseUrl(): string
+    {
+        return rtrim($this->stringConfig('baseUrl', self::DEFAULT_BASE_URL), '/');
+    }
+
+    /**
+     * @return array{secretKey: string, publicKey: string, uploaderId: string}|null
+     */
+    private function credentials(): ?array
+    {
+        $secretKey = $this->stringConfig('secretKey');
+        $publicKey = $this->stringConfig('publicKey');
+        if ($secretKey === '' || $publicKey === '') {
+            return null;
+        }
+
+        return [
+            'secretKey' => $secretKey,
+            'publicKey' => $publicKey,
+            'uploaderId' => $this->stringConfig('uploaderId', self::DEFAULT_UPLOADER_ID),
+        ];
+    }
+
+    private function stringConfig(string $key, string $fallback = ''): string
+    {
+        $value = $this->config[$key] ?? null;
+        if (!is_scalar($value)) {
+            return $fallback;
+        }
+
+        $value = trim((string) $value);
+
+        return $value === '' ? $fallback : $value;
+    }
+
+    private function intConfig(string $key, int $fallback): int
+    {
+        $value = $this->config[$key] ?? null;
+        if (!is_scalar($value) || !is_numeric($value)) {
+            return $fallback;
+        }
+
+        $value = (int) $value;
+
+        return $value > 0 ? $value : $fallback;
     }
 }

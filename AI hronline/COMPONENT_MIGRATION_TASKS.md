@@ -402,6 +402,9 @@ Remaining larger flows to finish after service foundation:
 - [ ] Permit Kerja live dummy MediaHost upload/update/delete browser test
 - [x] Akaun change request/update route and service wiring
 - [ ] Akaun live dummy MediaHost upload/update/delete browser test
+  - 2026-11-23: Corrected Akaun workflow standard. Staff `Penukaran Akaun` now uses a separate request flow backed by `hronline.tbl_akaun_permohonan_tukar`; staff no longer writes live `hronline.tbl_akaun` or sees row `Kemaskini` on the salary-bank list.
+  - 2026-11-23: Added `AkaunRequestService`, request list/form/detail actions, and explicit admin live-account CRUD routes (`/biodata/akaun/admin-tambah`, `/biodata/akaun/admin-kemaskini`).
+  - 2026-11-23: Verification passed for PHP syntax, route syntax, `php yii list`, and unauthenticated HTTP route smokes. Authenticated dummy request submission remains open.
 - [x] Pengalaman Kerja add/update/delete
 - [x] Sejarah Perubatan add/update/delete
 - [x] Keluarga add/update/delete route and service wiring

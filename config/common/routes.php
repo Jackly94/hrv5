@@ -24,6 +24,54 @@ return [
             Route::get('/menu')
                 ->action(Web\Menu\Action::class)
                 ->name('menu'),
+            Route::get('/pengesahan-data-staf')
+                ->action(Web\PengesahanDataStaf\IndexAction::class)
+                ->name('pengesahan-data-staf'),
+            Route::get('/pengesahan-data-staf/index')
+                ->action(Web\PengesahanDataStaf\IndexAction::class)
+                ->name('pengesahan-data-staf-index'),
+            Route::get('/pengesahan-data-staf/akaun-bank')
+                ->action(Web\PengesahanDataStaf\AkaunBank\IndexAction::class)
+                ->name('pengesahan-data-staf-akaun-bank'),
+            Route::get('/pengesahan-data-staf/akaun-bank/verification')
+                ->action(Web\PengesahanDataStaf\AkaunBank\VerificationAction::class)
+                ->name('pengesahan-data-staf-akaun-bank-verification'),
+            Route::methods(['GET', 'POST'], '/pengesahan-data-staf/akaun-bank/verify')
+                ->action(Web\PengesahanDataStaf\AkaunBank\VerifyAction::class)
+                ->name('pengesahan-data-staf-akaun-bank-verify'),
+            Route::get('/pengesahan-data-staf/akaun-bank/verify-detail')
+                ->action(Web\PengesahanDataStaf\AkaunBank\VerificationDetailAction::class)
+                ->name('pengesahan-data-staf-akaun-bank-verify-detail'),
+            Route::get('/pengesahan-data-staf/akaun-bank/approval')
+                ->action(Web\PengesahanDataStaf\AkaunBank\ApprovalAction::class)
+                ->name('pengesahan-data-staf-akaun-bank-approval'),
+            Route::methods(['GET', 'POST'], '/pengesahan-data-staf/akaun-bank/approve')
+                ->action(Web\PengesahanDataStaf\AkaunBank\ApproveAction::class)
+                ->name('pengesahan-data-staf-akaun-bank-approve'),
+            Route::get('/pengesahan-data-staf/akaun-bank/approve-detail')
+                ->action(Web\PengesahanDataStaf\AkaunBank\ApprovalDetailAction::class)
+                ->name('pengesahan-data-staf-akaun-bank-approve-detail'),
+            Route::get('/pengesahan-data-staf/pds-akaun-bank')
+                ->action(Web\PengesahanDataStaf\AkaunBank\IndexAction::class)
+                ->name('pengesahan-data-staf-pds-akaun-bank'),
+            Route::get('/pengesahan-data-staf/acc-bank-verification')
+                ->action(Web\PengesahanDataStaf\AkaunBank\VerificationAction::class)
+                ->name('pengesahan-data-staf-acc-bank-verification'),
+            Route::methods(['GET', 'POST'], '/pengesahan-data-staf/acc-bank-verify')
+                ->action(Web\PengesahanDataStaf\AkaunBank\VerifyAction::class)
+                ->name('pengesahan-data-staf-acc-bank-verify'),
+            Route::get('/pengesahan-data-staf/acc-bank-verify-details')
+                ->action(Web\PengesahanDataStaf\AkaunBank\VerificationDetailAction::class)
+                ->name('pengesahan-data-staf-acc-bank-verify-details'),
+            Route::get('/pengesahan-data-staf/acc-bank-approval')
+                ->action(Web\PengesahanDataStaf\AkaunBank\ApprovalAction::class)
+                ->name('pengesahan-data-staf-acc-bank-approval'),
+            Route::methods(['GET', 'POST'], '/pengesahan-data-staf/acc-bank-approve')
+                ->action(Web\PengesahanDataStaf\AkaunBank\ApproveAction::class)
+                ->name('pengesahan-data-staf-acc-bank-approve'),
+            Route::get('/pengesahan-data-staf/acc-bank-approve-details')
+                ->action(Web\PengesahanDataStaf\AkaunBank\ApprovalDetailAction::class)
+                ->name('pengesahan-data-staf-acc-bank-approve-details'),
             Route::get('/lantikan/index')
                 ->action(Web\Lantikan\IndexAction::class)
                 ->name('lantikan-index'),
@@ -402,236 +450,581 @@ return [
             Route::get('/biodata/penetapanpengguna')
                 ->action(Web\Biodata\SettingsAction::class)
                 ->name('biodata-penetapanpengguna'),
+            Route::get('/biodata/keahlian/view')
+                ->action(Web\Biodata\Sections\Keahlian\ViewAction::class)
+                ->name('biodata-keahlian-view'),
+            Route::get('/biodata/keahlian/adminview')
+                ->action(Web\Biodata\Sections\Keahlian\ViewAction::class)
+                ->name('biodata-keahlian-adminview'),
+            Route::methods(['GET', 'POST'], '/biodata/keahlian/tambahbadanprofesional')
+                ->action(Web\Biodata\Sections\Keahlian\FormAction::class)
+                ->name('biodata-keahlian-tambahbadanprofesional'),
+            Route::get('/biodata/keahlian/lihatbadanprofesional')
+                ->action(Web\Biodata\Sections\Keahlian\DetailAction::class)
+                ->name('biodata-keahlian-lihatbadanprofesional'),
+            Route::methods(['GET', 'POST'], '/biodata/keahlian/update')
+                ->action(Web\Biodata\Sections\Keahlian\FormAction::class)
+                ->name('biodata-keahlian-update'),
+            Route::post('/biodata/keahlian/delete')
+                ->action(Web\Biodata\Sections\Keahlian\DeleteAction::class)
+                ->name('biodata-keahlian-delete'),
+            Route::get('/biodata/alamat/view')
+                ->action(Web\Biodata\Sections\Alamat\ViewAction::class)
+                ->name('biodata-alamat-view'),
+            Route::get('/biodata/alamat/adminview')
+                ->action(Web\Biodata\Sections\Alamat\ViewAction::class)
+                ->name('biodata-alamat-adminview'),
+            Route::get('/biodata/alamat/lihatalamat')
+                ->action(Web\Biodata\Sections\Alamat\DetailAction::class)
+                ->name('biodata-alamat-lihatalamat'),
+            Route::methods(['GET', 'POST'], '/biodata/alamat/tambahalamat')
+                ->action(Web\Biodata\Sections\Alamat\FormAction::class)
+                ->name('biodata-alamat-tambahalamat'),
+            Route::methods(['GET', 'POST'], '/biodata/alamat/update')
+                ->action(Web\Biodata\Sections\Alamat\FormAction::class)
+                ->name('biodata-alamat-update'),
+            Route::post('/biodata/alamat/delete')
+                ->action(Web\Biodata\Sections\Alamat\DeleteAction::class)
+                ->name('biodata-alamat-delete'),
+            Route::methods(['GET', 'POST'], '/biodata/alamat/statelist')
+                ->action(Web\Biodata\Sections\Alamat\JsonListAction::class)
+                ->name('biodata-alamat-statelist'),
+            Route::methods(['GET', 'POST'], '/biodata/alamat/citylist')
+                ->action(Web\Biodata\Sections\Alamat\JsonListAction::class)
+                ->name('biodata-alamat-citylist'),
+            Route::get('/biodata/pendidikan/view')
+                ->action(Web\Biodata\Sections\Pendidikan\ViewAction::class)
+                ->name('biodata-pendidikan-view'),
+            Route::get('/biodata/pendidikan/adminview')
+                ->action(Web\Biodata\Sections\Pendidikan\ViewAction::class)
+                ->name('biodata-pendidikan-adminview'),
+            Route::get('/biodata/pendidikan/lihatpendidikan')
+                ->action(Web\Biodata\Sections\Pendidikan\DetailAction::class)
+                ->name('biodata-pendidikan-lihatpendidikan'),
+            Route::methods(['GET', 'POST'], '/biodata/pendidikan/tambahpendidikan')
+                ->action(Web\Biodata\Sections\Pendidikan\FormAction::class)
+                ->name('biodata-pendidikan-tambahpendidikan'),
+            Route::methods(['GET', 'POST'], '/biodata/pendidikan/update')
+                ->action(Web\Biodata\Sections\Pendidikan\FormAction::class)
+                ->name('biodata-pendidikan-update'),
+            Route::post('/biodata/pendidikan/delete')
+                ->action(Web\Biodata\Sections\Pendidikan\DeleteAction::class)
+                ->name('biodata-pendidikan-delete'),
+            Route::get('/biodata/pasport-permit/view')
+                ->action(Web\Biodata\Sections\PasportPermit\ViewAction::class)
+                ->name('biodata-pasport-permit-view'),
+            Route::get('/biodata/pasport-permit/adminview')
+                ->action(Web\Biodata\Sections\PasportPermit\ViewAction::class)
+                ->name('biodata-pasport-permit-adminview'),
+            Route::get('/biodata/pasport-permit/lihatpasport')
+                ->action(Web\Biodata\Sections\PasportPermit\DetailAction::class)
+                ->name('biodata-pasport-permit-lihatpasport'),
+            Route::get('/biodata/pasport-permit/lihatpermitkerja')
+                ->action(Web\Biodata\Sections\PasportPermit\DetailAction::class)
+                ->name('biodata-pasport-permit-lihatpermitkerja'),
+            Route::methods(['GET', 'POST'], '/biodata/pasport-permit/tambahpasport')
+                ->action(Web\Biodata\Sections\PasportPermit\FormAction::class)
+                ->name('biodata-pasport-permit-tambahpasport'),
+            Route::methods(['GET', 'POST'], '/biodata/pasport-permit/tambahpermitkerja')
+                ->action(Web\Biodata\Sections\PasportPermit\FormAction::class)
+                ->name('biodata-pasport-permit-tambahpermitkerja'),
+            Route::methods(['GET', 'POST'], '/biodata/pasport-permit/updatepasport')
+                ->action(Web\Biodata\Sections\PasportPermit\FormAction::class)
+                ->name('biodata-pasport-permit-updatepasport'),
+            Route::methods(['GET', 'POST'], '/biodata/pasport-permit/updatepermitkerja')
+                ->action(Web\Biodata\Sections\PasportPermit\FormAction::class)
+                ->name('biodata-pasport-permit-updatepermitkerja'),
+            Route::post('/biodata/pasport-permit/deletepaspot')
+                ->action(Web\Biodata\Sections\PasportPermit\DeleteAction::class)
+                ->name('biodata-pasport-permit-deletepaspot'),
+            Route::post('/biodata/pasport-permit/deletepermit')
+                ->action(Web\Biodata\Sections\PasportPermit\DeleteAction::class)
+                ->name('biodata-pasport-permit-deletepermit'),
+            Route::get('/biodata/lesen/view')
+                ->action(Web\Biodata\Sections\Lesen\ViewAction::class)
+                ->name('biodata-lesen-view'),
+            Route::get('/biodata/lesen/adminview')
+                ->action(Web\Biodata\Sections\Lesen\ViewAction::class)
+                ->name('biodata-lesen-adminview'),
+            Route::get('/biodata/lesen/lihatlesen')
+                ->action(Web\Biodata\Sections\Lesen\DetailAction::class)
+                ->name('biodata-lesen-lihatlesen'),
+            Route::methods(['GET', 'POST'], '/biodata/lesen/tambahlesen')
+                ->action(Web\Biodata\Sections\Lesen\FormAction::class)
+                ->name('biodata-lesen-tambahlesen'),
+            Route::methods(['GET', 'POST'], '/biodata/lesen/update')
+                ->action(Web\Biodata\Sections\Lesen\FormAction::class)
+                ->name('biodata-lesen-update'),
+            Route::get('/biodata/akaun/senarai-akaun')
+                ->action(Web\Biodata\Sections\Akaun\ViewAction::class)
+                ->name('biodata-akaun-senarai-akaun'),
+            Route::get('/biodata/akaun/admin-senarai-akaun')
+                ->action(Web\Biodata\Sections\Akaun\ViewAction::class)
+                ->name('biodata-akaun-admin-senarai-akaun'),
+            Route::get('/biodata/akaun/lihat')
+                ->action(Web\Biodata\Sections\Akaun\DetailAction::class)
+                ->name('biodata-akaun-lihat'),
+            Route::get('/biodata/akaun/permohonan-penukaran-akaun-gaji')
+                ->action(Web\Biodata\Sections\Akaun\RequestListAction::class)
+                ->name('biodata-akaun-permohonan-penukaran-akaun-gaji'),
+            Route::methods(['GET', 'POST'], '/biodata/akaun/mohon-tukar-akaun')
+                ->action(Web\Biodata\Sections\Akaun\RequestFormAction::class)
+                ->name('biodata-akaun-mohon-tukar-akaun'),
+            Route::get('/biodata/akaun/lihat-acc')
+                ->action(Web\Biodata\Sections\Akaun\RequestDetailAction::class)
+                ->name('biodata-akaun-lihat-acc'),
+            Route::methods(['GET', 'POST'], '/biodata/akaun/admin-tambah')
+                ->action(Web\Biodata\Sections\Akaun\FormAction::class)
+                ->name('biodata-akaun-admin-tambah'),
+            Route::methods(['GET', 'POST'], '/biodata/akaun/admin-kemaskini')
+                ->action(Web\Biodata\Sections\Akaun\FormAction::class)
+                ->name('biodata-akaun-admin-kemaskini'),
+            Route::get('/biodata/kecacatan/view')
+                ->action(Web\Biodata\Sections\Kecacatan\ViewAction::class)
+                ->name('biodata-kecacatan-view'),
+            Route::get('/biodata/kecacatan/adminview')
+                ->action(Web\Biodata\Sections\Kecacatan\ViewAction::class)
+                ->name('biodata-kecacatan-adminview'),
+            Route::get('/biodata/kecacatan/lihatkecacatan')
+                ->action(Web\Biodata\Sections\Kecacatan\DetailAction::class)
+                ->name('biodata-kecacatan-lihatkecacatan'),
+            Route::methods(['GET', 'POST'], '/biodata/kecacatan/tambahkecacatan')
+                ->action(Web\Biodata\Sections\Kecacatan\FormAction::class)
+                ->name('biodata-kecacatan-tambahkecacatan'),
+            Route::methods(['GET', 'POST'], '/biodata/kecacatan/update')
+                ->action(Web\Biodata\Sections\Kecacatan\FormAction::class)
+                ->name('biodata-kecacatan-update'),
+            Route::post('/biodata/kecacatan/delete')
+                ->action(Web\Biodata\Sections\Kecacatan\DeleteAction::class)
+                ->name('biodata-kecacatan-delete'),
+            Route::get('/biodata/keluarga/view')
+                ->action(Web\Biodata\Sections\Keluarga\ViewAction::class)
+                ->name('biodata-keluarga-view'),
+            Route::get('/biodata/keluarga/adminview')
+                ->action(Web\Biodata\Sections\Keluarga\ViewAction::class)
+                ->name('biodata-keluarga-adminview'),
+            Route::get('/biodata/keluarga/lihatkeluarga')
+                ->action(Web\Biodata\Sections\Keluarga\DetailAction::class)
+                ->name('biodata-keluarga-lihatkeluarga'),
+            Route::methods(['GET', 'POST'], '/biodata/keluarga/ums-nonums')
+                ->action(Web\Biodata\Sections\Keluarga\FormAction::class)
+                ->name('biodata-keluarga-ums-nonums'),
+            Route::methods(['GET', 'POST'], '/biodata/keluarga/update')
+                ->action(Web\Biodata\Sections\Keluarga\FormAction::class)
+                ->name('biodata-keluarga-update'),
+            Route::post('/biodata/keluarga/delete')
+                ->action(Web\Biodata\Sections\Keluarga\DeleteAction::class)
+                ->name('biodata-keluarga-delete'),
+            Route::get('/biodata/bidangkepakaran/view')
+                ->action(Web\Biodata\Sections\BidangKepakaran\ViewAction::class)
+                ->name('biodata-bidangkepakaran-view'),
+            Route::get('/biodata/bidangkepakaran/adminview')
+                ->action(Web\Biodata\Sections\BidangKepakaran\ViewAction::class)
+                ->name('biodata-bidangkepakaran-adminview'),
+            Route::get('/biodata/bidangkepakaran/lihatbidangkepakaran')
+                ->action(Web\Biodata\Sections\BidangKepakaran\DetailAction::class)
+                ->name('biodata-bidangkepakaran-lihatbidangkepakaran'),
+            Route::methods(['GET', 'POST'], '/biodata/bidangkepakaran/tambahbidangkepakaran')
+                ->action(Web\Biodata\Sections\BidangKepakaran\FormAction::class)
+                ->name('biodata-bidangkepakaran-tambahbidangkepakaran'),
+            Route::methods(['GET', 'POST'], '/biodata/bidangkepakaran/update')
+                ->action(Web\Biodata\Sections\BidangKepakaran\FormAction::class)
+                ->name('biodata-bidangkepakaran-update'),
+            Route::post('/biodata/bidangkepakaran/delete')
+                ->action(Web\Biodata\Sections\BidangKepakaran\DeleteAction::class)
+                ->name('biodata-bidangkepakaran-delete'),
+            Route::get('/biodata/vaksinasi/index')
+                ->action(Web\Biodata\Sections\Vaksinasi\ViewAction::class)
+                ->name('biodata-vaksinasi-index'),
+            Route::get('/biodata/vaksinasi/admin-view-status-vaksinasi')
+                ->action(Web\Biodata\Sections\Vaksinasi\ViewAction::class)
+                ->name('biodata-vaksinasi-admin-view-status-vaksinasi'),
+            Route::methods(['GET', 'POST'], '/biodata/vaksinasi/view-st-vaksinasi')
+                ->action(Web\Biodata\Sections\Vaksinasi\FormAction::class)
+                ->name('biodata-vaksinasi-view-st-vaksinasi'),
+            Route::methods(['GET', 'POST'], '/biodata/vaksinasi/update-status-vaksinasi')
+                ->action(Web\Biodata\Sections\Vaksinasi\FormAction::class)
+                ->name('biodata-vaksinasi-update-status-vaksinasi'),
+            Route::methods(['GET', 'POST'], '/biodata/vaksinasi/update-st-vaksinasi')
+                ->action(Web\Biodata\Sections\Vaksinasi\FormAction::class)
+                ->name('biodata-vaksinasi-update-st-vaksinasi'),
+            Route::get('/biodata/kelayakan-profesional/view')
+                ->action(Web\Biodata\Sections\KelayakanProfesional\ViewAction::class)
+                ->name('biodata-kelayakan-profesional-view'),
+            Route::get('/biodata/kelayakan-profesional/admin-view')
+                ->action(Web\Biodata\Sections\KelayakanProfesional\ViewAction::class)
+                ->name('biodata-kelayakan-profesional-admin-view'),
+            Route::get('/biodata/kelayakan-profesional/view-cc')
+                ->action(Web\Biodata\Sections\KelayakanProfesional\DetailAction::class)
+                ->name('biodata-kelayakan-profesional-view-cc'),
+            Route::methods(['GET', 'POST'], '/biodata/kelayakan-profesional/add-cl-cert')
+                ->action(Web\Biodata\Sections\KelayakanProfesional\FormAction::class)
+                ->name('biodata-kelayakan-profesional-add-cl-cert'),
+            Route::methods(['GET', 'POST'], '/biodata/kelayakan-profesional/update-cc')
+                ->action(Web\Biodata\Sections\KelayakanProfesional\FormAction::class)
+                ->name('biodata-kelayakan-profesional-update-cc'),
+            Route::post('/biodata/kelayakan-profesional/delete-cc')
+                ->action(Web\Biodata\Sections\KelayakanProfesional\DeleteAction::class)
+                ->name('biodata-kelayakan-profesional-delete-cc'),
+            Route::get('/biodata/bahasa/view')
+                ->action(Web\Biodata\Sections\Bahasa\ViewAction::class)
+                ->name('biodata-bahasa-view'),
+            Route::get('/biodata/bahasa/adminview')
+                ->action(Web\Biodata\Sections\Bahasa\ViewAction::class)
+                ->name('biodata-bahasa-adminview'),
+            Route::get('/biodata/bahasa/lihatbahasa')
+                ->action(Web\Biodata\Sections\Bahasa\DetailAction::class)
+                ->name('biodata-bahasa-lihatbahasa'),
+            Route::methods(['GET', 'POST'], '/biodata/bahasa/tambahbahasa')
+                ->action(Web\Biodata\Sections\Bahasa\FormAction::class)
+                ->name('biodata-bahasa-tambahbahasa'),
+            Route::methods(['GET', 'POST'], '/biodata/bahasa/update')
+                ->action(Web\Biodata\Sections\Bahasa\FormAction::class)
+                ->name('biodata-bahasa-update'),
+            Route::post('/biodata/bahasa/delete')
+                ->action(Web\Biodata\Sections\Bahasa\DeleteAction::class)
+                ->name('biodata-bahasa-delete'),
+            Route::get('/biodata/anugerah/view')
+                ->action(Web\Biodata\Sections\Anugerah\ViewAction::class)
+                ->name('biodata-anugerah-view'),
+            Route::get('/biodata/anugerah/adminview')
+                ->action(Web\Biodata\Sections\Anugerah\ViewAction::class)
+                ->name('biodata-anugerah-adminview'),
+            Route::get('/biodata/anugerah/lihatanugerah')
+                ->action(Web\Biodata\Sections\Anugerah\DetailAction::class)
+                ->name('biodata-anugerah-lihatanugerah'),
+            Route::methods(['GET', 'POST'], '/biodata/anugerah/tambahanugerah')
+                ->action(Web\Biodata\Sections\Anugerah\FormAction::class)
+                ->name('biodata-anugerah-tambahanugerah'),
+            Route::methods(['GET', 'POST'], '/biodata/anugerah/update')
+                ->action(Web\Biodata\Sections\Anugerah\FormAction::class)
+                ->name('biodata-anugerah-update'),
+            Route::post('/biodata/anugerah/delete')
+                ->action(Web\Biodata\Sections\Anugerah\DeleteAction::class)
+                ->name('biodata-anugerah-delete'),
+            Route::get('/biodata/pengalamankerja/view')
+                ->action(Web\Biodata\Sections\PengalamanKerja\ViewAction::class)
+                ->name('biodata-pengalamankerja-view'),
+            Route::get('/biodata/pengalamankerja/adminview')
+                ->action(Web\Biodata\Sections\PengalamanKerja\ViewAction::class)
+                ->name('biodata-pengalamankerja-adminview'),
+            Route::get('/biodata/pengalamankerja/lihatpengalamankerja')
+                ->action(Web\Biodata\Sections\PengalamanKerja\DetailAction::class)
+                ->name('biodata-pengalamankerja-lihatpengalamankerja'),
+            Route::methods(['GET', 'POST'], '/biodata/pengalamankerja/tambahpengalamankerja')
+                ->action(Web\Biodata\Sections\PengalamanKerja\FormAction::class)
+                ->name('biodata-pengalamankerja-tambahpengalamankerja'),
+            Route::methods(['GET', 'POST'], '/biodata/pengalamankerja/update')
+                ->action(Web\Biodata\Sections\PengalamanKerja\FormAction::class)
+                ->name('biodata-pengalamankerja-update'),
+            Route::post('/biodata/pengalamankerja/delete')
+                ->action(Web\Biodata\Sections\PengalamanKerja\DeleteAction::class)
+                ->name('biodata-pengalamankerja-delete'),
+            Route::get('/biodata/sejarahperubatan/view')
+                ->action(Web\Biodata\Sections\SejarahPerubatan\ViewAction::class)
+                ->name('biodata-sejarahperubatan-view'),
+            Route::get('/biodata/sejarahperubatan/adminview')
+                ->action(Web\Biodata\Sections\SejarahPerubatan\ViewAction::class)
+                ->name('biodata-sejarahperubatan-adminview'),
+            Route::get('/biodata/sejarahperubatan/lihatsejarahperubatan')
+                ->action(Web\Biodata\Sections\SejarahPerubatan\DetailAction::class)
+                ->name('biodata-sejarahperubatan-lihatsejarahperubatan'),
+            Route::methods(['GET', 'POST'], '/biodata/sejarahperubatan/tambahsejarahperubatan')
+                ->action(Web\Biodata\Sections\SejarahPerubatan\FormAction::class)
+                ->name('biodata-sejarahperubatan-tambahsejarahperubatan'),
+            Route::methods(['GET', 'POST'], '/biodata/sejarahperubatan/update')
+                ->action(Web\Biodata\Sections\SejarahPerubatan\FormAction::class)
+                ->name('biodata-sejarahperubatan-update'),
+            Route::post('/biodata/sejarahperubatan/delete')
+                ->action(Web\Biodata\Sections\SejarahPerubatan\DeleteAction::class)
+                ->name('biodata-sejarahperubatan-delete'),
             Route::get('/badan-profesional/view')
-                ->action(Web\BadanProfesional\ViewAction::class)
+                ->action(Web\Biodata\Sections\Keahlian\ViewAction::class)
                 ->name('badan-profesional-view'),
+            Route::get('/badan-profesional/adminview')
+                ->action(Web\Biodata\Sections\Keahlian\ViewAction::class)
+                ->name('badan-profesional-adminview'),
             Route::methods(['GET', 'POST'], '/badan-profesional/tambahbadanprofesional')
-                ->action(Web\BadanProfesional\AddAction::class)
+                ->action(Web\Biodata\Sections\Keahlian\FormAction::class)
                 ->name('badan-profesional-tambahbadanprofesional'),
             Route::get('/badan-profesional/lihatbadanprofesional')
-                ->action(Web\BadanProfesional\DetailAction::class)
+                ->action(Web\Biodata\Sections\Keahlian\DetailAction::class)
                 ->name('badan-profesional-lihatbadanprofesional'),
             Route::methods(['GET', 'POST'], '/badan-profesional/update')
-                ->action(Web\BadanProfesional\AddAction::class)
+                ->action(Web\Biodata\Sections\Keahlian\FormAction::class)
                 ->name('badan-profesional-update'),
             Route::post('/badan-profesional/delete')
-                ->action(Web\BadanProfesional\DeleteAction::class)
+                ->action(Web\Biodata\Sections\Keahlian\DeleteAction::class)
                 ->name('badan-profesional-delete'),
             Route::get('/alamat/view')
-                ->action(Web\Alamat\ViewAction::class)
+                ->action(Web\Biodata\Sections\Alamat\ViewAction::class)
                 ->name('alamat-view'),
+            Route::get('/alamat/adminview')
+                ->action(Web\Biodata\Sections\Alamat\ViewAction::class)
+                ->name('alamat-adminview'),
             Route::get('/alamat/lihatalamat')
-                ->action(Web\Alamat\DetailAction::class)
+                ->action(Web\Biodata\Sections\Alamat\DetailAction::class)
                 ->name('alamat-lihatalamat'),
             Route::methods(['GET', 'POST'], '/alamat/tambahalamat')
-                ->action(Web\Alamat\FormAction::class)
+                ->action(Web\Biodata\Sections\Alamat\FormAction::class)
                 ->name('alamat-tambahalamat'),
             Route::methods(['GET', 'POST'], '/alamat/update')
-                ->action(Web\Alamat\FormAction::class)
+                ->action(Web\Biodata\Sections\Alamat\FormAction::class)
                 ->name('alamat-update'),
             Route::post('/alamat/delete')
-                ->action(Web\Alamat\DeleteAction::class)
+                ->action(Web\Biodata\Sections\Alamat\DeleteAction::class)
                 ->name('alamat-delete'),
             Route::methods(['GET', 'POST'], '/alamat/statelist')
-                ->action(Web\Alamat\JsonListAction::class)
+                ->action(Web\Biodata\Sections\Alamat\JsonListAction::class)
                 ->name('alamat-statelist'),
             Route::methods(['GET', 'POST'], '/alamat/citylist')
-                ->action(Web\Alamat\JsonListAction::class)
+                ->action(Web\Biodata\Sections\Alamat\JsonListAction::class)
                 ->name('alamat-citylist'),
             Route::get('/pendidikan/view')
-                ->action(Web\StaffRecordOverview\ViewAction::class)
+                ->action(Web\Biodata\Sections\Pendidikan\ViewAction::class)
                 ->name('pendidikan-view'),
+            Route::get('/pendidikan/adminview')
+                ->action(Web\Biodata\Sections\Pendidikan\ViewAction::class)
+                ->name('pendidikan-adminview'),
             Route::get('/pendidikan/lihatpendidikan')
-                ->action(Web\StaffRecordOverview\DetailAction::class)
+                ->action(Web\Biodata\Sections\Pendidikan\DetailAction::class)
                 ->name('pendidikan-lihatpendidikan'),
             Route::methods(['GET', 'POST'], '/pendidikan/tambahpendidikan')
-                ->action(Web\StaffRecordOverviewCrud\FormAction::class)
+                ->action(Web\Biodata\Sections\Pendidikan\FormAction::class)
                 ->name('pendidikan-tambahpendidikan'),
             Route::methods(['GET', 'POST'], '/pendidikan/update')
-                ->action(Web\StaffRecordOverviewCrud\FormAction::class)
+                ->action(Web\Biodata\Sections\Pendidikan\FormAction::class)
                 ->name('pendidikan-update'),
             Route::post('/pendidikan/delete')
-                ->action(Web\StaffRecordOverviewCrud\DeleteAction::class)
+                ->action(Web\Biodata\Sections\Pendidikan\DeleteAction::class)
                 ->name('pendidikan-delete'),
             Route::get('/pasport-permit/view')
-                ->action(Web\StaffRecordOverview\ViewAction::class)
+                ->action(Web\Biodata\Sections\PasportPermit\ViewAction::class)
                 ->name('pasport-permit-view'),
+            Route::get('/pasport-permit/adminview')
+                ->action(Web\Biodata\Sections\PasportPermit\ViewAction::class)
+                ->name('pasport-permit-adminview'),
             Route::get('/pasport-permit/lihatpasport')
-                ->action(Web\StaffRecordOverview\DetailAction::class)
+                ->action(Web\Biodata\Sections\PasportPermit\DetailAction::class)
                 ->name('pasport-permit-lihatpasport'),
             Route::get('/pasport-permit/lihatpermitkerja')
-                ->action(Web\StaffRecordOverview\DetailAction::class)
+                ->action(Web\Biodata\Sections\PasportPermit\DetailAction::class)
                 ->name('pasport-permit-lihatpermitkerja'),
             Route::methods(['GET', 'POST'], '/pasport-permit/tambahpasport')
-                ->action(Web\StaffRecordOverviewCrud\FormAction::class)
+                ->action(Web\Biodata\Sections\PasportPermit\FormAction::class)
                 ->name('pasport-permit-tambahpasport'),
             Route::methods(['GET', 'POST'], '/pasport-permit/tambahpermitkerja')
-                ->action(Web\StaffRecordOverviewCrud\FormAction::class)
+                ->action(Web\Biodata\Sections\PasportPermit\FormAction::class)
                 ->name('pasport-permit-tambahpermitkerja'),
             Route::methods(['GET', 'POST'], '/pasport-permit/updatepasport')
-                ->action(Web\StaffRecordOverviewCrud\FormAction::class)
+                ->action(Web\Biodata\Sections\PasportPermit\FormAction::class)
                 ->name('pasport-permit-updatepasport'),
             Route::methods(['GET', 'POST'], '/pasport-permit/updatepermitkerja')
-                ->action(Web\StaffRecordOverviewCrud\FormAction::class)
+                ->action(Web\Biodata\Sections\PasportPermit\FormAction::class)
                 ->name('pasport-permit-updatepermitkerja'),
             Route::post('/pasport-permit/deletepaspot')
-                ->action(Web\StaffRecordOverviewCrud\DeleteAction::class)
+                ->action(Web\Biodata\Sections\PasportPermit\DeleteAction::class)
                 ->name('pasport-permit-deletepaspot'),
             Route::post('/pasport-permit/deletepermit')
-                ->action(Web\StaffRecordOverviewCrud\DeleteAction::class)
+                ->action(Web\Biodata\Sections\PasportPermit\DeleteAction::class)
                 ->name('pasport-permit-deletepermit'),
             Route::get('/lesen/view')
-                ->action(Web\StaffRecordOverview\ViewAction::class)
+                ->action(Web\Biodata\Sections\Lesen\ViewAction::class)
                 ->name('lesen-view'),
+            Route::get('/lesen/adminview')
+                ->action(Web\Biodata\Sections\Lesen\ViewAction::class)
+                ->name('lesen-adminview'),
             Route::get('/lesen/lihatlesen')
-                ->action(Web\Lesen\DetailAction::class)
+                ->action(Web\Biodata\Sections\Lesen\DetailAction::class)
                 ->name('lesen-lihatlesen'),
             Route::methods(['GET', 'POST'], '/lesen/tambahlesen')
-                ->action(Web\Lesen\FormAction::class)
+                ->action(Web\Biodata\Sections\Lesen\FormAction::class)
                 ->name('lesen-tambahlesen'),
             Route::methods(['GET', 'POST'], '/lesen/update')
-                ->action(Web\Lesen\FormAction::class)
+                ->action(Web\Biodata\Sections\Lesen\FormAction::class)
                 ->name('lesen-update'),
             Route::get('/akaun/senarai-akaun')
-                ->action(Web\StaffRecordOverview\ViewAction::class)
+                ->action(Web\Biodata\Sections\Akaun\ViewAction::class)
                 ->name('akaun-senarai-akaun'),
+            Route::get('/akaun/admin-senarai-akaun')
+                ->action(Web\Biodata\Sections\Akaun\ViewAction::class)
+                ->name('akaun-admin-senarai-akaun'),
             Route::get('/akaun/lihat')
-                ->action(Web\StaffRecordOverview\DetailAction::class)
+                ->action(Web\Biodata\Sections\Akaun\DetailAction::class)
                 ->name('akaun-lihat'),
-            Route::methods(['GET', 'POST'], '/akaun/permohonan-penukaran-akaun-gaji')
-                ->action(Web\StaffRecordOverviewCrud\FormAction::class)
+            Route::get('/akaun/permohonan-penukaran-akaun-gaji')
+                ->action(Web\Biodata\Sections\Akaun\RequestListAction::class)
                 ->name('akaun-permohonan-penukaran-akaun-gaji'),
+            Route::methods(['GET', 'POST'], '/akaun/mohon-tukar-akaun')
+                ->action(Web\Biodata\Sections\Akaun\RequestFormAction::class)
+                ->name('akaun-mohon-tukar-akaun'),
+            Route::get('/akaun/lihat-acc')
+                ->action(Web\Biodata\Sections\Akaun\RequestDetailAction::class)
+                ->name('akaun-lihat-acc'),
+            Route::methods(['GET', 'POST'], '/akaun/admin-tambah')
+                ->action(Web\Biodata\Sections\Akaun\FormAction::class)
+                ->name('akaun-admin-tambah'),
+            Route::methods(['GET', 'POST'], '/akaun/admin-kemaskini')
+                ->action(Web\Biodata\Sections\Akaun\FormAction::class)
+                ->name('akaun-admin-kemaskini'),
             Route::get('/kecacatan/view')
-                ->action(Web\StaffRecordOverview\ViewAction::class)
+                ->action(Web\Biodata\Sections\Kecacatan\ViewAction::class)
                 ->name('kecacatan-view'),
+            Route::get('/kecacatan/adminview')
+                ->action(Web\Biodata\Sections\Kecacatan\ViewAction::class)
+                ->name('kecacatan-adminview'),
             Route::get('/kecacatan/lihatkecacatan')
-                ->action(Web\Kecacatan\DetailAction::class)
+                ->action(Web\Biodata\Sections\Kecacatan\DetailAction::class)
                 ->name('kecacatan-lihatkecacatan'),
             Route::methods(['GET', 'POST'], '/kecacatan/tambahkecacatan')
-                ->action(Web\Kecacatan\FormAction::class)
+                ->action(Web\Biodata\Sections\Kecacatan\FormAction::class)
                 ->name('kecacatan-tambahkecacatan'),
             Route::methods(['GET', 'POST'], '/kecacatan/update')
-                ->action(Web\Kecacatan\FormAction::class)
+                ->action(Web\Biodata\Sections\Kecacatan\FormAction::class)
                 ->name('kecacatan-update'),
             Route::post('/kecacatan/delete')
-                ->action(Web\Kecacatan\DeleteAction::class)
+                ->action(Web\Biodata\Sections\Kecacatan\DeleteAction::class)
                 ->name('kecacatan-delete'),
             Route::get('/keluarga/view')
-                ->action(Web\StaffRecordOverview\ViewAction::class)
+                ->action(Web\Biodata\Sections\Keluarga\ViewAction::class)
                 ->name('keluarga-view'),
+            Route::get('/keluarga/adminview')
+                ->action(Web\Biodata\Sections\Keluarga\ViewAction::class)
+                ->name('keluarga-adminview'),
             Route::get('/keluarga/lihatkeluarga')
-                ->action(Web\StaffRecordOverview\DetailAction::class)
+                ->action(Web\Biodata\Sections\Keluarga\DetailAction::class)
                 ->name('keluarga-lihatkeluarga'),
             Route::methods(['GET', 'POST'], '/keluarga/ums-nonums')
-                ->action(Web\StaffRecordOverviewCrud\FormAction::class)
+                ->action(Web\Biodata\Sections\Keluarga\FormAction::class)
                 ->name('keluarga-ums-nonums'),
             Route::methods(['GET', 'POST'], '/keluarga/update')
-                ->action(Web\StaffRecordOverviewCrud\FormAction::class)
+                ->action(Web\Biodata\Sections\Keluarga\FormAction::class)
                 ->name('keluarga-update'),
             Route::post('/keluarga/delete')
-                ->action(Web\StaffRecordOverviewCrud\DeleteAction::class)
+                ->action(Web\Biodata\Sections\Keluarga\DeleteAction::class)
                 ->name('keluarga-delete'),
             Route::get('/bidangkepakaran/view')
-                ->action(Web\StaffRecordOverview\ViewAction::class)
+                ->action(Web\Biodata\Sections\BidangKepakaran\ViewAction::class)
                 ->name('bidangkepakaran-view'),
+            Route::get('/bidangkepakaran/adminview')
+                ->action(Web\Biodata\Sections\BidangKepakaran\ViewAction::class)
+                ->name('bidangkepakaran-adminview'),
             Route::get('/bidangkepakaran/lihatbidangkepakaran')
-                ->action(Web\StaffRecordOverview\DetailAction::class)
+                ->action(Web\Biodata\Sections\BidangKepakaran\DetailAction::class)
                 ->name('bidangkepakaran-lihatbidangkepakaran'),
             Route::methods(['GET', 'POST'], '/bidangkepakaran/tambahbidangkepakaran')
-                ->action(Web\StaffRecordOverviewCrud\FormAction::class)
+                ->action(Web\Biodata\Sections\BidangKepakaran\FormAction::class)
                 ->name('bidangkepakaran-tambahbidangkepakaran'),
             Route::methods(['GET', 'POST'], '/bidangkepakaran/update')
-                ->action(Web\StaffRecordOverviewCrud\FormAction::class)
+                ->action(Web\Biodata\Sections\BidangKepakaran\FormAction::class)
                 ->name('bidangkepakaran-update'),
             Route::post('/bidangkepakaran/delete')
-                ->action(Web\StaffRecordOverviewCrud\DeleteAction::class)
+                ->action(Web\Biodata\Sections\BidangKepakaran\DeleteAction::class)
                 ->name('bidangkepakaran-delete'),
             Route::get('/vaksinasi/index')
-                ->action(Web\StaffRecordOverview\ViewAction::class)
+                ->action(Web\Biodata\Sections\Vaksinasi\ViewAction::class)
                 ->name('vaksinasi-index'),
+            Route::get('/vaksinasi/admin-view-status-vaksinasi')
+                ->action(Web\Biodata\Sections\Vaksinasi\ViewAction::class)
+                ->name('vaksinasi-admin-view-status-vaksinasi'),
             Route::methods(['GET', 'POST'], '/vaksinasi/view-st-vaksinasi')
-                ->action(Web\StaffRecordOverviewCrud\FormAction::class)
+                ->action(Web\Biodata\Sections\Vaksinasi\FormAction::class)
                 ->name('vaksinasi-view-st-vaksinasi'),
             Route::methods(['GET', 'POST'], '/vaksinasi/update-status-vaksinasi')
-                ->action(Web\StaffRecordOverviewCrud\FormAction::class)
+                ->action(Web\Biodata\Sections\Vaksinasi\FormAction::class)
                 ->name('vaksinasi-update-status-vaksinasi'),
             Route::methods(['GET', 'POST'], '/vaksinasi/update-st-vaksinasi')
-                ->action(Web\StaffRecordOverviewCrud\FormAction::class)
+                ->action(Web\Biodata\Sections\Vaksinasi\FormAction::class)
                 ->name('vaksinasi-update-st-vaksinasi'),
             Route::get('/kelayakan-profesional/view')
-                ->action(Web\StaffRecordOverview\ViewAction::class)
+                ->action(Web\Biodata\Sections\KelayakanProfesional\ViewAction::class)
                 ->name('kelayakan-profesional-view'),
+            Route::get('/kelayakan-profesional/admin-view')
+                ->action(Web\Biodata\Sections\KelayakanProfesional\ViewAction::class)
+                ->name('kelayakan-profesional-admin-view'),
             Route::get('/kelayakan-profesional/view-cc')
-                ->action(Web\StaffRecordOverview\DetailAction::class)
+                ->action(Web\Biodata\Sections\KelayakanProfesional\DetailAction::class)
                 ->name('kelayakan-profesional-view-cc'),
             Route::methods(['GET', 'POST'], '/kelayakan-profesional/add-cl-cert')
-                ->action(Web\KelayakanProfesional\FormAction::class)
+                ->action(Web\Biodata\Sections\KelayakanProfesional\FormAction::class)
                 ->name('kelayakan-profesional-add-cl-cert'),
             Route::methods(['GET', 'POST'], '/kelayakan-profesional/update-cc')
-                ->action(Web\KelayakanProfesional\FormAction::class)
+                ->action(Web\Biodata\Sections\KelayakanProfesional\FormAction::class)
                 ->name('kelayakan-profesional-update-cc'),
             Route::post('/kelayakan-profesional/delete-cc')
-                ->action(Web\KelayakanProfesional\DeleteAction::class)
+                ->action(Web\Biodata\Sections\KelayakanProfesional\DeleteAction::class)
                 ->name('kelayakan-profesional-delete-cc'),
             Route::get('/bahasa/view')
-                ->action(Web\StaffRecord\ViewAction::class)
+                ->action(Web\Biodata\Sections\Bahasa\ViewAction::class)
                 ->name('bahasa-view'),
+            Route::get('/bahasa/adminview')
+                ->action(Web\Biodata\Sections\Bahasa\ViewAction::class)
+                ->name('bahasa-adminview'),
             Route::get('/bahasa/lihatbahasa')
-                ->action(Web\StaffRecord\DetailAction::class)
+                ->action(Web\Biodata\Sections\Bahasa\DetailAction::class)
                 ->name('bahasa-lihatbahasa'),
             Route::methods(['GET', 'POST'], '/bahasa/tambahbahasa')
-                ->action(Web\StaffRecord\FormAction::class)
+                ->action(Web\Biodata\Sections\Bahasa\FormAction::class)
                 ->name('bahasa-tambahbahasa'),
             Route::methods(['GET', 'POST'], '/bahasa/update')
-                ->action(Web\StaffRecord\FormAction::class)
+                ->action(Web\Biodata\Sections\Bahasa\FormAction::class)
                 ->name('bahasa-update'),
             Route::post('/bahasa/delete')
-                ->action(Web\StaffRecord\DeleteAction::class)
+                ->action(Web\Biodata\Sections\Bahasa\DeleteAction::class)
                 ->name('bahasa-delete'),
             Route::get('/anugerah/view')
-                ->action(Web\StaffRecord\ViewAction::class)
+                ->action(Web\Biodata\Sections\Anugerah\ViewAction::class)
                 ->name('anugerah-view'),
+            Route::get('/anugerah/adminview')
+                ->action(Web\Biodata\Sections\Anugerah\ViewAction::class)
+                ->name('anugerah-adminview'),
             Route::get('/anugerah/lihatanugerah')
-                ->action(Web\StaffRecord\DetailAction::class)
+                ->action(Web\Biodata\Sections\Anugerah\DetailAction::class)
                 ->name('anugerah-lihatanugerah'),
             Route::methods(['GET', 'POST'], '/anugerah/tambahanugerah')
-                ->action(Web\StaffRecord\FormAction::class)
+                ->action(Web\Biodata\Sections\Anugerah\FormAction::class)
                 ->name('anugerah-tambahanugerah'),
             Route::methods(['GET', 'POST'], '/anugerah/update')
-                ->action(Web\StaffRecord\FormAction::class)
+                ->action(Web\Biodata\Sections\Anugerah\FormAction::class)
                 ->name('anugerah-update'),
             Route::post('/anugerah/delete')
-                ->action(Web\StaffRecord\DeleteAction::class)
+                ->action(Web\Biodata\Sections\Anugerah\DeleteAction::class)
                 ->name('anugerah-delete'),
             Route::get('/pengalamankerja/view')
-                ->action(Web\StaffRecord\ViewAction::class)
+                ->action(Web\Biodata\Sections\PengalamanKerja\ViewAction::class)
                 ->name('pengalamankerja-view'),
+            Route::get('/pengalamankerja/adminview')
+                ->action(Web\Biodata\Sections\PengalamanKerja\ViewAction::class)
+                ->name('pengalamankerja-adminview'),
             Route::get('/pengalamankerja/lihatpengalamankerja')
-                ->action(Web\StaffRecord\DetailAction::class)
+                ->action(Web\Biodata\Sections\PengalamanKerja\DetailAction::class)
                 ->name('pengalamankerja-lihatpengalamankerja'),
             Route::methods(['GET', 'POST'], '/pengalamankerja/tambahpengalamankerja')
-                ->action(Web\StaffRecord\FormAction::class)
+                ->action(Web\Biodata\Sections\PengalamanKerja\FormAction::class)
                 ->name('pengalamankerja-tambahpengalamankerja'),
             Route::methods(['GET', 'POST'], '/pengalamankerja/update')
-                ->action(Web\StaffRecord\FormAction::class)
+                ->action(Web\Biodata\Sections\PengalamanKerja\FormAction::class)
                 ->name('pengalamankerja-update'),
             Route::post('/pengalamankerja/delete')
-                ->action(Web\StaffRecord\DeleteAction::class)
+                ->action(Web\Biodata\Sections\PengalamanKerja\DeleteAction::class)
                 ->name('pengalamankerja-delete'),
             Route::get('/sejarahperubatan/view')
-                ->action(Web\StaffRecord\ViewAction::class)
+                ->action(Web\Biodata\Sections\SejarahPerubatan\ViewAction::class)
                 ->name('sejarahperubatan-view'),
+            Route::get('/sejarahperubatan/adminview')
+                ->action(Web\Biodata\Sections\SejarahPerubatan\ViewAction::class)
+                ->name('sejarahperubatan-adminview'),
             Route::get('/sejarahperubatan/lihatsejarahperubatan')
-                ->action(Web\StaffRecord\DetailAction::class)
+                ->action(Web\Biodata\Sections\SejarahPerubatan\DetailAction::class)
                 ->name('sejarahperubatan-lihatsejarahperubatan'),
             Route::methods(['GET', 'POST'], '/sejarahperubatan/tambahsejarahperubatan')
-                ->action(Web\StaffRecord\FormAction::class)
+                ->action(Web\Biodata\Sections\SejarahPerubatan\FormAction::class)
                 ->name('sejarahperubatan-tambahsejarahperubatan'),
             Route::methods(['GET', 'POST'], '/sejarahperubatan/update')
-                ->action(Web\StaffRecord\FormAction::class)
+                ->action(Web\Biodata\Sections\SejarahPerubatan\FormAction::class)
                 ->name('sejarahperubatan-update'),
             Route::post('/sejarahperubatan/delete')
-                ->action(Web\StaffRecord\DeleteAction::class)
+                ->action(Web\Biodata\Sections\SejarahPerubatan\DeleteAction::class)
                 ->name('sejarahperubatan-delete'),
             Route::methods(['GET', 'POST'], '/biodata/citylist')
                 ->action(Web\Biodata\JsonListAction::class)

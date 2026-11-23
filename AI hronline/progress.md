@@ -1,5 +1,33 @@
 # HROnline Yii3 Migration Progress
 
+## 2026-11-23
+
+### Biodata Section CRUD Ownership
+
+- Replaced generic Web action delegation with section-owned actions for Pendidikan, Keluarga, Pasport Permit, Bidang Kepakaran, and Vaksinasi.
+- Added section CRUD adapter methods for save/delete/key resolution where needed.
+- Added shared Web action helper for section redirects, query appending, uploaded files, and client IP handling.
+- Added old `/keluarga/delete` compatibility route to match the new `/biodata/keluarga/delete` route.
+- Replaced the final `Web\StaffRecordOverview` wrappers for Lesen, Kecacatan, and Kelayakan Profesional.
+- Added local Kelayakan Profesional `view.php` and `detail.php` templates.
+- Deleted unused `src/Web/StaffRecordOverview` and `src/Web/StaffRecordOverviewCrud` folders.
+- Replaced `Web\StaffRecord` delegation with section-owned actions for Bahasa, Anugerah, Pengalaman Kerja, and Sejarah Perubatan.
+- Deleted unused `src/Web/StaffRecord`.
+- Moved the remaining generic shared Biodata internals out of root `src/Shared` and into `src/Shared/Biodata/Sections`.
+- Renamed shared support classes from `StaffRecord*` to Biodata-specific names:
+  - `BiodataSimpleRecordService`
+  - `BiodataSimpleRecordCrudService`
+  - `BiodataOverviewService`
+  - `BiodataOverviewCrudService`
+- Verified:
+  - PHP lint passed for changed section actions, section services, helper, and routes.
+  - `php yii list` bootstrapped successfully.
+  - Old and new GET routes for list/detail/form pages route to login cleanly when unauthenticated.
+  - Keluarga delete compatibility routes are registered; unauthenticated POST smoke is blocked by CSRF as expected.
+  - No remaining references to the deleted Web overview namespaces.
+  - No remaining references to the deleted `Web\StaffRecord` namespace.
+  - No remaining references to root `App\Shared\StaffRecord*` services.
+
 ## 2026-11-16
 
 ### Workspace Decision
@@ -2090,3 +2118,133 @@ Recorded on 2026-11-20.
   - `php yii list`.
   - Unauthenticated HTTP smokes for the five new write routes all resolve to login.
 - Still requires authenticated dummy-row verification before full write-flow completion.
+### Biodata Sections Restructure Plan
+
+Recorded a task-by-task plan for moving "Maklumat Dan Rekod Kakitangan" modules toward `/biodata/{section}/...` URLs, `src/Web/Biodata/Sections/{Section}` web ownership, and `src/Shared/Biodata/Sections` service ownership.
+
+- New plan file: `AI hronline/11_biodata_sections_restructure_plan.md`
+- Recommended first execution task: add the Biodata section URL helper and new Keluarga route aliases without moving files yet.
+
+Execution pass on 2026-11-23:
+
+- Added `BiodataSectionUrlService` and switched Biodata user/admin section tiles to new `/biodata/{section}/...` URLs.
+- Added route aliases for all Biodata staff-record sections while keeping old top-level routes registered.
+- Added Keluarga and Pendidikan Web wrappers under `src/Web/Biodata/Sections/*` and Shared adapters under `src/Shared/Biodata/Sections/*`.
+- Updated shared overview/simple-section services, menu route normalization, Alamat, and Keahlian flows to preserve admin `?icno=...` context under the new URL convention.
+- Verification passed: PHP syntax checks for changed PHP files and unauthenticated HTTP smoke tests for representative new routes landing on login.
+- Remaining work: full physical extraction out of the legacy shared services and authenticated CRUD browser verification.
+
+Follow-up execution:
+
+- Added section-owned Web CRUD action classes for the remaining Biodata section items, including Phase 4 modules and the simple staff-record sections.
+- Routed Phase 4 modules through their own Biodata folders:
+  - Paspot & Permit Kerja
+  - Lesen
+  - Akaun
+  - Bidang Kepakaran
+  - Vaksinasi
+  - Kelayakan Profesional
+- Decided Lesen should move under the Biodata section convention instead of remaining module-specific.
+- Added Phase 4 Shared section adapters under `src/Shared/Biodata/Sections`.
+- Preserved admin `?icno=...` behavior for Lesen and Kelayakan Profesional forms/deletes under the new routes.
+- Verification passed: PHP syntax checks for new/changed section classes, `php yii list`, and unauthenticated HTTP smokes for representative Phase 4 routes.
+- Architectural note: route/action ownership is now per section, but deep DB/list/save/delete internals still need to be extracted from the old shared services before `StaffRecordOverviewService` and `StaffRecordOverviewCrudService` can be retired.
+
+Follow-up execution:
+
+- Fully extracted Akaun as the first independent CRUD pattern under `src/Web/Biodata/Sections/Akaun` and `src/Shared/Biodata/Sections`.
+- Akaun list/detail now uses `AkaunService` directly instead of `StaffRecordOverviewService`.
+- Akaun create/update now uses `AkaunCrudService` directly instead of `StaffRecordOverviewCrudService`.
+- Akaun now owns local UI templates for list, detail, and form under `src/Web/Biodata/Sections/Akaun`.
+- Old `/akaun/...` routes now resolve to the same Akaun-owned section actions as `/biodata/akaun/...`.
+- Removed the Akaun branch/config from the generic shared overview/CRUD services.
+- Verification passed: PHP syntax checks, `php yii list`, and unauthenticated HTTP smokes for `/biodata/akaun/senarai-akaun`, `/biodata/akaun/admin-senarai-akaun?icno=681114015611`, and `/akaun/senarai-akaun`.
+
+Follow-up execution:
+
+- Standardized Biodata section UI ownership from Alamat through Vaksinasi.
+- Added local `view.php`, `detail.php`, and/or `form.php` templates under each section folder where that section has those pages.
+- Added `SectionTemplatePath` so `/biodata/{section}/...` actions render section-local templates while old top-level compatibility URLs can keep their old templates.
+- Corrected the local Kecacatan templates/actions to use `/biodata/kecacatan/...` URLs and preserve admin `?icno=...` context.
+- Verification passed: PHP syntax checks across patched actions and 112 section template/action files.
+
+Phase 6 cleanup start:
+
+- Audited remaining generic `StaffRecordOverview*` and `StaffRecordSection*` usage.
+- Confirmed the generic services cannot be deleted yet because several section adapters still delegate list/detail/save/delete internals to them.
+- Cleaned active `/biodata/...` routes for Alamat, Keahlian, and Kecacatan so they now enter `src/Web/Biodata/Sections/{Section}` action classes instead of old top-level modules.
+- Left old top-level routes in place as compatibility aliases.
+
+Follow-up cleanup:
+
+- Moved standalone Web action logic into Biodata section folders for Alamat, Keahlian, Kecacatan, Lesen, and Kelayakan Profesional.
+- Repointed old top-level compatibility routes to `src/Web/Biodata/Sections/{Section}` action classes.
+- Deleted old standalone Web folders:
+  - `src/Web/Alamat`
+  - `src/Web/BadanProfesional`
+  - `src/Web/Kecacatan`
+  - `src/Web/Lesen`
+  - `src/Web/KelayakanProfesional`
+- Confirmed no route references remain to old standalone folders or generic staff-record Web actions.
+- Verification passed: PHP syntax checks, `php yii list`, and unauthenticated HTTP smokes for old and new section URLs.
+
+### Akaun Bank Change Request Standard
+
+Recorded on 2026-11-23.
+
+Business rule confirmed from old Yii2 Staff:
+
+- Staff cannot directly add or update salary bank account rows in `hronline.tbl_akaun`.
+- Staff must submit a bank-account change request for admin verification and approval.
+- The staff button `Penukaran Akaun` must open the request list, not the live account CRUD form.
+- Live salary-bank account CRUD is admin-owned.
+
+Yii3 implementation:
+
+- Staff list route remains `/biodata/akaun/senarai-akaun`.
+- Staff `Penukaran Akaun` now opens `/biodata/akaun/permohonan-penukaran-akaun-gaji`.
+- Staff new request route is `/biodata/akaun/mohon-tukar-akaun`.
+- Staff request detail route is `/biodata/akaun/lihat-acc`.
+- Request rows are saved to `hronline.tbl_akaun_permohonan_tukar`.
+- Request upload uses `MediaHostFileService` with `Maklumat Rekod Kakitangan/akaun`.
+- Bank SWIFT code is derived from `hronline.tbl_bank_main.swift_code`.
+- Staff live-account rows no longer expose `Kemaskini`.
+- Admin live-account routes are explicit:
+  - `/biodata/akaun/admin-tambah`
+  - `/biodata/akaun/admin-kemaskini`
+- Admin live-account routes require an admin target `icno` query before rendering the form.
+
+Files added or changed:
+
+- Added `src/Shared/Biodata/Sections/AkaunRequestService.php`.
+- Added `src/Web/Biodata/Sections/Akaun/RequestListAction.php`.
+- Added `src/Web/Biodata/Sections/Akaun/RequestFormAction.php`.
+- Added `src/Web/Biodata/Sections/Akaun/RequestDetailAction.php`.
+- Added `src/Web/Biodata/Sections/Akaun/request-list.php`.
+- Updated `src/Shared/Biodata/Sections/AkaunService.php` so staff and admin account actions differ.
+- Updated `src/Shared/Biodata/Sections/AkaunCrudService.php` so live account CRUD uses admin route names.
+- Updated `src/Web/Biodata/Sections/Akaun/FormAction.php` with an admin-route target guard.
+- Updated `src/Web/Biodata/Sections/Akaun/form.php` to support page title, section title, and submit label overrides for the request form.
+- Updated `config/common/routes.php` with request-list/new-request/request-detail/admin CRUD route separation.
+
+Standard going forward:
+
+- Biodata sections that have an approval workflow must separate staff request services from admin live-record CRUD services.
+- Staff request pages use `RequestListAction`, `RequestFormAction`, `RequestDetailAction`, and a `{Section}RequestService` where the request table differs from the live table.
+- Admin live-record CRUD uses explicit admin route names and must preserve target staff context using `?icno=...`.
+- Staff-facing list/detail pages must not expose update/delete buttons for records that require admin verification.
+- Compatibility top-level routes may exist, but canonical routes remain under `/biodata/{section}/...`.
+
+Verification:
+
+- `php -l` passed for changed Akaun service/action/template files.
+- `php -l config/common/routes.php` passed.
+- `php yii list` boots.
+- Unauthenticated HTTP smoke checks for Akaun routes redirect to `/hronline/login`, confirming route registration.
+- Browser opened `/hronline/biodata/akaun/senarai-akaun` for authenticated manual verification.
+
+Still pending:
+
+- Migrate the admin verification and approval screens from old Yii2 `PengesahanDataStafController` / `views/pengesahan-data-staf/akaun_gaji`.
+- Authenticated dummy request submission test with safe data and upload.
+

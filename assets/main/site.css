@@ -234,9 +234,8 @@ a:hover {
 }
 
 .content_i {
-    width: min(100%, 1360px);
-    margin: 0 auto 0 0;
-    padding: 1.5rem 1.75rem;
+    width: 100%;
+    padding: 1.5rem clamp(1.5rem, 2vw, 2.5rem);
 }
 
 .footer {
@@ -1066,7 +1065,10 @@ textarea[readonly]::placeholder {
 
 .profile-page {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1.25rem;
+    width: 100%;
+    min-width: 0;
 }
 
 .profile-heading {
@@ -1088,6 +1090,8 @@ textarea[readonly]::placeholder {
 }
 
 .profile-card {
+    width: 100%;
+    min-width: 0;
     border: 1px solid rgba(203, 213, 225, 0.86);
     border-radius: 0.9rem;
     background: var(--surface);
@@ -1254,6 +1258,8 @@ textarea[readonly]::placeholder {
 .page-main-card,
 .biodata-main-card {
     display: grid;
+    width: 100%;
+    min-width: 0;
     gap: 0;
 }
 
@@ -1266,6 +1272,8 @@ textarea[readonly]::placeholder {
 
 .page-card-section,
 .biodata-card-section {
+    width: 100%;
+    min-width: 0;
     border-bottom: 1px solid var(--line);
 }
 
@@ -1280,10 +1288,14 @@ textarea[readonly]::placeholder {
 }
 
 .page-section-body {
+    width: 100%;
+    min-width: 0;
     padding: 1.25rem;
 }
 
 .content-inner-card {
+    width: 100%;
+    min-width: 0;
     overflow: hidden;
     border: 1px solid rgba(203, 213, 225, 0.86);
     border-radius: 0.85rem;
@@ -1602,6 +1614,7 @@ textarea[readonly]::placeholder {
 .grid-table-wrap {
     width: 100%;
     max-width: 100%;
+    min-width: 0;
     background: #fff;
 }
 
@@ -1902,7 +1915,102 @@ textarea[readonly]::placeholder {
 
 .staff-overview-stack {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    min-width: 0;
     gap: 1rem;
+}
+
+.app-tabs,
+.staff-overview-tabs {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    min-width: 0;
+    gap: 1rem;
+}
+
+.app-tab-panel,
+.staff-overview-tab-panel {
+    width: 100%;
+    min-width: 0;
+}
+
+.app-tab-list,
+.staff-overview-tab-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.35rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    background: #f8fafc;
+}
+
+.app-tab,
+.staff-overview-tab {
+    min-height: 2.55rem;
+    padding: 0 0.75rem;
+    border: 1px solid transparent;
+    border-radius: 0.55rem;
+    background: transparent;
+    color: #475569;
+    box-shadow: none;
+    font-size: 0.92rem;
+    line-height: 1.2;
+}
+
+.app-tab:hover,
+.app-tab:focus-visible,
+.staff-overview-tab:hover,
+.staff-overview-tab:focus-visible {
+    background: #fff;
+    color: var(--brand-primary);
+    box-shadow: none;
+    transform: none;
+}
+
+.app-tab.is-active,
+.app-tab[aria-selected="true"],
+.staff-overview-tab.is-active,
+.staff-overview-tab[aria-selected="true"] {
+    border-color: rgba(46, 48, 146, 0.18);
+    background: #fff;
+    color: var(--brand-primary);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.app-tab strong,
+.staff-overview-tab strong {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.55rem;
+    min-height: 1.55rem;
+    padding: 0 0.45rem;
+    border-radius: 999px;
+    background: #e2e8f0;
+    color: #334155;
+    font-size: 0.78rem;
+    line-height: 1;
+}
+
+.app-tab.is-active strong,
+.app-tab[aria-selected="true"] strong,
+.staff-overview-tab.is-active strong,
+.staff-overview-tab[aria-selected="true"] strong {
+    background: var(--brand-primary-soft);
+    color: var(--brand-primary);
+}
+
+.app-tabs.is-ready .app-tab-panel[hidden],
+.staff-overview-tabs.is-ready .staff-overview-tab-panel[hidden] {
+    display: none;
+}
+
+.app-tab-panel:focus,
+.staff-overview-tab-panel:focus {
+    outline: none;
 }
 
 .staff-overview-table {
@@ -2452,6 +2560,24 @@ textarea[readonly]::placeholder {
     border: 1px solid #fde68a;
     background: #fffbeb;
     color: #92400e;
+}
+
+.status-badge-success {
+    border: 1px solid #22c55e;
+    background: #dcfce7;
+    color: #14532d;
+}
+
+.status-badge-danger {
+    border: 1px solid #ef4444;
+    background: #fee2e2;
+    color: #7f1d1d;
+}
+
+.status-badge-warning {
+    border: 1px solid #f59e0b;
+    background: #fef3c7;
+    color: #78350f;
 }
 
 .staff-page-panel {

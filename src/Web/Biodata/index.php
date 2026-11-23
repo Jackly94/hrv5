@@ -54,6 +54,14 @@ $renderOptions = static function (string $name, array $items) use ($selected): v
         <?php
     }
 };
+$statusBadgeClass = static function (array $profile): string {
+    $statusCode = ltrim(trim((string) ($profile['statusCode'] ?? '')), '0');
+    $statusName = strtolower(trim((string) ($profile['status'] ?? '')));
+
+    return $statusCode === '6' || $statusName === 'bekas pekerja' || $statusName === 'tidak aktif'
+        ? 'status-badge-danger'
+        : 'status-badge-success';
+};
 ?>
 
 <main class="profile-page biodata-grid-page">
@@ -192,7 +200,7 @@ $renderOptions = static function (string $name, array $items) use ($selected): v
                         <?php endif; ?>
                         <?php foreach ($rows as $profile): ?>
                             <?php
-                            $statusClass = $profile['statusCode'] === '06' ? 'status-badge-danger' : 'status-badge-success';
+                            $statusClass = $statusBadgeClass($profile);
                             $href = '/biodata/adminview?id=' . rawurlencode($profile['icno']);
                             ?>
                             <tr>
