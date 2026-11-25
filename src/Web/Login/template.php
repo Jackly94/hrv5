@@ -18,7 +18,7 @@ $this->setTitle('Login - ' . $applicationParams->name);
 <main class="login-page">
     <section class="login-panel login-panel-wide" aria-labelledby="login-title">
         <div class="login-brand">
-            <div class="login-mark">HR</div>
+            <img class="login-mark login-logo" src="/images/hronline_logo.png" alt="HROnline">
             <div>
                 <h1 id="login-title">HROnline Login</h1>
                 <p>Universiti Malaysia Sabah</p>

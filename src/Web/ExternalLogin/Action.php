@@ -12,6 +12,8 @@ use Yiisoft\Yii\View\Renderer\WebViewRenderer;
 
 final readonly class Action
 {
+    private const AUTH_LAYOUT = __DIR__ . '/../Shared/Layout/Auth/layout.php';
+
     public function __construct(
         private WebViewRenderer $viewRenderer,
         private ExternalLoginService $loginService,
@@ -46,10 +48,12 @@ final readonly class Action
             }
         }
 
-        $response = $this->viewRenderer->render(__DIR__ . '/template', [
-            'values' => $values,
-            'result' => $result,
-        ]);
+        $response = $this->viewRenderer
+            ->withLayout(self::AUTH_LAYOUT)
+            ->render(__DIR__ . '/template', [
+                'values' => $values,
+                'result' => $result,
+            ]);
 
         if ($result?->success === true && $result->legacySessionId !== null) {
             return $response->withAddedHeader(

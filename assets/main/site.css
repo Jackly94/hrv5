@@ -29,6 +29,12 @@ body {
     font: 1rem/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+body.auth-layout {
+    background:
+        linear-gradient(135deg, rgba(46, 48, 146, 0.08), rgba(238, 29, 35, 0.05)),
+        var(--canvas);
+}
+
 * {
     box-sizing: border-box;
 }
@@ -106,6 +112,14 @@ a:hover {
     letter-spacing: 0;
 }
 
+.login-logo {
+    width: 5.5rem;
+    height: 3rem;
+    padding: 0;
+    background: transparent;
+    object-fit: contain;
+}
+
 .brand-logo {
     width: 2.75rem;
     height: 2.75rem;
@@ -126,6 +140,13 @@ a:hover {
 
 .header-brand {
     display: none;
+}
+
+.auth-shell {
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    padding: 1.5rem 2rem;
 }
 
 .app-nav {
@@ -315,6 +336,13 @@ button.button-link-success:hover {
     display: flex;
     justify-content: center;
     padding-top: 4rem;
+}
+
+.auth-layout .login-page {
+    align-items: center;
+    width: 100%;
+    min-height: 0;
+    padding: 0;
 }
 
 .login-panel {

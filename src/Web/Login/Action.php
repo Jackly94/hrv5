@@ -12,6 +12,7 @@ use Yiisoft\Yii\View\Renderer\WebViewRenderer;
 final readonly class Action
 {
     private const PORTAL_URL = 'https://kinabalu.ums.edu.my/menu';
+    private const AUTH_LAYOUT = __DIR__ . '/../Shared/Layout/Auth/layout.php';
 
     public function __construct(
         private WebViewRenderer $viewRenderer,
@@ -20,19 +21,11 @@ final readonly class Action
 
     public function __invoke(ServerRequestInterface $request): ResponseInterface
     {
-        $loginMethod = $request->getCookieParams()['hr_login_method'] ?? null;
-
-        if ($loginMethod === 'portal') {
-            return $this->redirect(self::PORTAL_URL);
-        }
-
-        if ($loginMethod === 'external') {
-            return $this->redirect('/external-login');
-        }
-
-        return $this->viewRenderer->render(__DIR__ . '/template', [
-            'portalUrl' => self::PORTAL_URL,
-        ]);
+        return $this->viewRenderer
+            ->withLayout(self::AUTH_LAYOUT)
+            ->render(__DIR__ . '/template', [
+                'portalUrl' => self::PORTAL_URL,
+            ]);
     }
 
     private function redirect(string $url): ResponseInterface

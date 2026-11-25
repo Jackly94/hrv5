@@ -23,7 +23,7 @@ $errors = $result?->errors ?? [];
 <main class="login-page">
     <section class="login-panel" aria-labelledby="external-login-title">
         <div class="login-brand">
-            <div class="login-mark">HR</div>
+            <img class="login-mark login-logo" src="/images/hronline_logo.png" alt="HROnline">
             <div>
                 <h1 id="external-login-title">External Login</h1>
                 <p>HROnline Yii3 migration pilot</p>
