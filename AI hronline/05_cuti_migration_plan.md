@@ -598,8 +598,9 @@ Goal:
 Files:
 
 - `src/Shared/CutiApplicationService.php`
-- `src/Web/Cuti/Individu/CreateAction.php`
-- templates under `src/Web/Cuti/Individu/form`
+- `src/Web/Cuti/Individu/LeaveFormAction.php`
+- Dedicated form actions under `src/Web/Cuti/Individu/*FormAction.php`
+- Dedicated direct views under `src/Web/Cuti/Individu/*-form.php`
 
 Implementation:
 
@@ -614,6 +615,7 @@ Implementation:
   - `cuti/individu/cs2`
   - `cuti/individu/hso`
 - Reuse old business rules from `TblRecords`, `Layak`, `CutiUmum`, `SetPegawai`, `Tindakan`, and `Department`.
+- Use maintainer-friendly direct forms only; no metadata-driven fields and no shared conditional mega-form for final migrated workflows.
 - Keep file upload-heavy flows as legacy until file service is migrated.
 - Write to `hrm.cuti_tbl_records`.
 - Log to `hrm.cuti_log` or `hrm.cuti_log_activity` as old workflow expects.
@@ -632,8 +634,9 @@ Verification:
 
 Execution notes:
 
-- Yii3 picker now hands off to existing Yii2 form routes for write safety.
-- No Yii3 writes to `hrm.cuti_tbl_records` were enabled in this slice.
+- Yii3 routes now use dedicated form actions and direct views for `ck`, `cb`, `cr1`, `cr1-aca`, `cr2`, `ctr`, `cs1`, `cs2`, and `hso`.
+- Removed the old shared `src/Web/Cuti/Individu/FormAction.php` and `src/Web/Cuti/Individu/form.php` pair so Cuti forms no longer depend on one conditional mega-form.
+- The action/view split preserves the existing `CutiApplicationService` submit path first; no live POST submission was executed during the maintainer-friendly reconfiguration pass.
 
 ### Task CTI-10: Migrate Cancel and Upload Flows
 

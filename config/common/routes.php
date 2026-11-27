@@ -118,19 +118,22 @@ return [
                 ->action(Web\Lantikan\IndexAction::class)
                 ->name('lantikan-index'),
             Route::methods(['GET', 'POST'], '/lantikan/lantik-staf-baru')
-                ->action(Web\Lantikan\FormAction::class)
+                ->action(Web\Lantikan\StafBaruFormAction::class)
                 ->name('lantikan-lantik-staf-baru'),
             Route::get('/lantikan/lantik-staf-baru/result')
                 ->action(Web\Lantikan\ResultAction::class)
                 ->name('lantikan-lantik-staf-baru-result'),
+            Route::get('/lantikan/lantik-staf-baru/email-check')
+                ->action(Web\Lantikan\EmailCheckAction::class)
+                ->name('lantikan-lantik-staf-baru-email-check'),
             Route::methods(['GET', 'POST'], '/lantikan/lantik-phs')
-                ->action(Web\Lantikan\FormAction::class)
+                ->action(Web\Lantikan\PhsFormAction::class)
                 ->name('lantikan-lantik-phs'),
             Route::methods(['GET', 'POST'], '/lantikan/lantik-khas')
-                ->action(Web\Lantikan\FormAction::class)
+                ->action(Web\Lantikan\KhasFormAction::class)
                 ->name('lantikan-lantik-khas'),
             Route::methods(['GET', 'POST'], '/lantikan/lantik-spdp')
-                ->action(Web\Lantikan\FormAction::class)
+                ->action(Web\Lantikan\SpdpFormAction::class)
                 ->name('lantikan-lantik-spdp'),
             Route::get('/lantikan/lssu-index')
                 ->action(Web\Lantikan\SearchAction::class)
@@ -228,12 +231,24 @@ return [
             Route::methods(['GET', 'POST'], '/kehadiran/approve-thtc')
                 ->action(Web\Kehadiran\WriteAction::class)
                 ->name('kehadiran-approve-thtc'),
+            Route::get('/kehadiran/supervisor-staff-attendance-report')
+                ->action(Web\Kehadiran\SupervisorStaffAttendanceReportAction::class)
+                ->name('kehadiran-supervisor-staff-attendance-report'),
             Route::get('/kehadiran/senarai_kakitangan')
                 ->action(Web\Kehadiran\SupervisorAction::class)
                 ->name('kehadiran-senarai-kakitangan'),
             Route::get('/kehadiran/staff-wbb')
                 ->action(Web\Kehadiran\SupervisorAction::class)
                 ->name('kehadiran-staff-wbb'),
+            Route::methods(['GET', 'POST'], '/kehadiran/wbb-list')
+                ->action(Web\Kehadiran\WbbListAction::class)
+                ->name('kehadiran-wbb-list'),
+            Route::post('/kehadiran/del-wbb')
+                ->action(Web\Kehadiran\WbbDeleteAction::class)
+                ->name('kehadiran-del-wbb'),
+            Route::methods(['GET', 'POST'], '/kehadiran/set-peg')
+                ->action(Web\Kehadiran\SetPegAction::class)
+                ->name('kehadiran-set-peg'),
             Route::get('/kehadiran/sup-mth-rpt')
                 ->action(Web\Kehadiran\SupervisorAction::class)
                 ->name('kehadiran-sup-mth-rpt'),
@@ -264,6 +279,9 @@ return [
             Route::get('/kehadiran/wfh-by-mth')
                 ->action(Web\Kehadiran\SupervisorAction::class)
                 ->name('kehadiran-wfh-by-mth'),
+            Route::methods(['GET', 'POST'], '/kehadiran/wfh-edit-day')
+                ->action(Web\Kehadiran\WfhEditDayAction::class)
+                ->name('kehadiran-wfh-edit-day'),
             Route::get('/kehadiran/wfh-jadual')
                 ->action(Web\Kehadiran\SupervisorAction::class)
                 ->name('kehadiran-wfh-jadual'),
@@ -358,31 +376,31 @@ return [
                 ->action(Web\Cuti\Shared\LegacyRedirectAction::class)
                 ->name('cuti-individu-cancel-leave'),
             Route::methods(['GET', 'POST'], '/cuti/individu/ck')
-                ->action(Web\Cuti\Individu\FormAction::class)
+                ->action(Web\Cuti\Individu\CutiKecemasanFormAction::class)
                 ->name('cuti-individu-ck'),
             Route::methods(['GET', 'POST'], '/cuti/individu/cb')
-                ->action(Web\Cuti\Individu\FormAction::class)
+                ->action(Web\Cuti\Individu\CutiBersalinFormAction::class)
                 ->name('cuti-individu-cb'),
             Route::methods(['GET', 'POST'], '/cuti/individu/cr1')
-                ->action(Web\Cuti\Individu\FormAction::class)
+                ->action(Web\Cuti\Individu\CutiRehatDalamNegaraFormAction::class)
                 ->name('cuti-individu-cr1'),
             Route::methods(['GET', 'POST'], '/cuti/individu/cr1-aca')
-                ->action(Web\Cuti\Individu\FormAction::class)
+                ->action(Web\Cuti\Individu\CutiRehatDalamNegaraAkademikFormAction::class)
                 ->name('cuti-individu-cr1-aca'),
             Route::methods(['GET', 'POST'], '/cuti/individu/cr2')
-                ->action(Web\Cuti\Individu\FormAction::class)
+                ->action(Web\Cuti\Individu\CutiRehatLuarNegaraFormAction::class)
                 ->name('cuti-individu-cr2'),
             Route::methods(['GET', 'POST'], '/cuti/individu/ctr')
-                ->action(Web\Cuti\Individu\FormAction::class)
+                ->action(Web\Cuti\Individu\CutiTanpaRekodFormAction::class)
                 ->name('cuti-individu-ctr'),
             Route::methods(['GET', 'POST'], '/cuti/individu/cs1')
-                ->action(Web\Cuti\Individu\FormAction::class)
+                ->action(Web\Cuti\Individu\CutiSakitFormAction::class)
                 ->name('cuti-individu-cs1'),
             Route::methods(['GET', 'POST'], '/cuti/individu/cs2')
-                ->action(Web\Cuti\Individu\FormAction::class)
+                ->action(Web\Cuti\Individu\CutiSakitLanjutanFormAction::class)
                 ->name('cuti-individu-cs2'),
             Route::methods(['GET', 'POST'], '/cuti/individu/hso')
-                ->action(Web\Cuti\Individu\FormAction::class)
+                ->action(Web\Cuti\Individu\HsoFormAction::class)
                 ->name('cuti-individu-hso'),
             Route::get('/cuti/pegawai/senarai-peraku')
                 ->action(Web\Cuti\Pegawai\OfficerAction::class)

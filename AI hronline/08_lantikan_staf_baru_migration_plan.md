@@ -8,7 +8,7 @@ Migrate old Yii2 `LantikanController::actionLantikStafBaru()` into the Yii3 app 
 
 - Current Yii3 route: `GET|POST /lantikan/lantik-staf-baru`
 - Old Yii2 route: `lantikan/lantik-staf-baru`
-- Current Yii3 behavior: form exists as dry-run only. No appointment records are inserted yet.
+- Current Yii3 behavior: dry-run remains the default. A feature-gated Yii3 core transaction path exists behind `HRONLINE_LANTIKAN_STAF_BARU_WRITE=1`, but it has not been signed off with approved dummy/UAT data.
 
 This plan is for the real `Staf Baru` submit flow. It does not cover PHS, Khas, SPDP, Staf UMS reappointment, salary profile, or LPG writes except where shared services can be reused later.
 
@@ -31,18 +31,21 @@ Primary source:
 
 Already exists:
 
-- `src/Web/Lantikan/FormAction.php`
-- `src/Web/Lantikan/form.php`
+- `src/Web/Lantikan/StafBaruFormAction.php`
+- `src/Web/Lantikan/staf-baru-form.php`
 - `src/Shared/LantikanService.php`
 - `src/Shared/LantikanReferenceService.php`
 - `src/Shared/ActiveDirectoryApiClient.php`
+- `src/Shared/LantikanStafBaruService.php`
+- `src/Shared/LantikanStafBaruTransactionService.php`
+- `/lantikan/lantik-staf-baru/result` reconciliation page
 
 Important current limitation:
 
-- The Yii3 form is a dry-run scaffold, not the complete Yii2 Staf Baru form.
-- It does not yet include every `baru` scenario field from Yii2.
-- It does not yet run the AD email existence check.
-- It does not insert `hronline.tblprcobiodata`, reserve UMSPER, or create dependent HR history rows.
+- The Yii3 write path is still disabled by default and should only be used for controlled UAT with `HRONLINE_LANTIKAN_STAF_BARU_WRITE=1`.
+- Live submit requires AD email existence validation before the core DB transaction.
+- Core `hronline.*` insert rows and UMSPER reservation are implemented, but successful dummy creation, forced rollback, and concurrency verification are still pending before task completion can be checked.
+- AD create, IdP Mata, notifications, allocation-profile replacement, and cross-module side effects remain post-commit/manual or disabled.
 
 ## Old Form Field Coverage
 
@@ -160,6 +163,12 @@ Yii3 transaction should include:
 - `hronline.tblrscosalmovemth`
 - `hronline.tblrscofileno`
 
+Live Yii3 submit table count:
+
+- Inserts 16 core `hronline.*` tables for non-probation appointment statuses.
+- Inserts 17 core `hronline.*` tables when `statLantikan = 1`, because `hronline.tblrscoprobtnperiod` is included.
+- The transaction insert loop skips any planned core table whose row is `null`; currently only `hronline.tblrscoprobtnperiod` is conditional.
+
 Post-commit side effects:
 
 - AD create user
@@ -276,10 +285,19 @@ Run one task at a time. Mark the box only after implementation and verification 
 Execution status on 2026-11-19:
 
 - Implemented `src/Shared/LantikanStafBaruService.php` for normalization, server-side validation, optional AD email existence checking, generated UMSPER preview, and dry-run insert planning.
+- Implemented `src/Shared/LantikanStafBaruTransactionService.php` for feature-gated core `hronline.*` inserts, advisory-lock protected live UMSPER reservation, and reconciliation checks.
 - Updated `src/Shared/LantikanReferenceService.php` so the Staf Baru form includes the missing Yii2 `baru` fields and reference options.
-- Updated `src/Web/Lantikan/form.php` to render the generated dry-run plan.
+- Earlier generic `src/Web/Lantikan/form.php` rendering was replaced by dedicated direct workflow views.
+- Updated `src/Web/Lantikan/StafBaruFormAction.php` and `/lantikan/lantik-staf-baru/result` so controlled live submit can redirect to a table-by-table reconciliation page when the feature flag is enabled.
+- Split Staf Baru into dedicated `src/Web/Lantikan/StafBaruFormAction.php` and `src/Web/Lantikan/staf-baru-form.php` files so Staf Baru UI changes no longer depend on the generic Lantikan form action/view.
+- Reconfigured `src/Web/Lantikan/staf-baru-form.php` to direct normal form markup with explicit field calls. It no longer builds the form from `$form['fields']`, `$fieldsByName`, section metadata, or `$renderField()`.
 - Updated `src/Shared/LantikanService.php` so the Staf Baru tile opens local Yii3 `/lantikan/lantik-staf-baru`; the form still shows a Yii2 fallback link.
-- Live inserts remain disabled. No `hronline.*`, AD create, IdP, STARS, security, or medical writes were executed.
+- Live inserts remain disabled by default. No approved dummy/UAT `hronline.*`, AD create, IdP, STARS, security, or medical writes were executed.
+
+Continuation note on 2026-11-27:
+
+- Live preparation now avoids generating a UMSPER insert plan before the advisory lock; live UMSPER generation happens inside the locked transaction path.
+- The reconciliation page now marks `hronline.tblrscoprobtnperiod` as `Tidak berkaitan` when `statLantikan != 1`, matching the Yii2 insert rule.
 
 ## Execution Tasks
 
@@ -292,7 +310,7 @@ Goal:
 Files:
 
 - `src/Shared/LantikanReferenceService.php`
-- `src/Web/Lantikan/form.php`
+- `src/Web/Lantikan/staf-baru-form.php`
 
 Add fields:
 

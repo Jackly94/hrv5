@@ -16,12 +16,13 @@ Sources reviewed:
 
 ## Current Yii3 State
 
-`/cuti/individu/pilih` is local Yii3, but it is still a picker only.
+`/cuti/individu/pilih` is local Yii3 and active leave application forms are local Yii3 routes.
 
 - Yii3 loads leave types from `hrm.cuti_leave_type`.
 - Yii3 currently filters to the same active IDs used by old `actionPilih`: `1, 2, 20, 21, 28`.
-- The picker links open old Yii2 forms in a new tab via `CutiMenuService::normalizeRoute()`.
-- Yii3 routes already reserve GET/POST paths for `ck`, `cb`, `cr1`, `cr1-aca`, `cr2`, `ctr`, `cs1`, `cs2`, and `hso`, but each currently uses `LegacyRedirectAction`.
+- The picker links route locally for the migrated active forms.
+- Yii3 routes for `ck`, `cb`, `cr1`, `cr1-aca`, `cr2`, `ctr`, `cs1`, `cs2`, and `hso` now use dedicated action classes and dedicated direct views.
+- The old shared Cuti `FormAction.php` and conditional `form.php` were removed under the maintainer-friendly migration standard.
 
 ## Old Picker Behavior
 
@@ -630,6 +631,17 @@ Status note:
 - Implemented Yii3 local routes for `cr1`, `cr1-aca`, `cr2`, `cs1`, `cs2`, `cb`, plus direct local routes for `ck`, `ctr`, and `hso`.
 - Implemented `CutiApplicationService` for picker catalog, form data, validation, upload coordination, transactional record insert, and `hrm.cuti_log` insert.
 - Extended `MediaHostFileService` so Cuti uploads can pass category and description while existing callers keep defaults.
+- Reconfigured Cuti forms to follow the direct maintainer-friendly migration standard:
+  - `ck` uses `CutiKecemasanFormAction` and `cuti-kecemasan-form.php`.
+  - `cb` uses `CutiBersalinFormAction` and `cuti-bersalin-form.php`.
+  - `cr1` uses `CutiRehatDalamNegaraFormAction` and `cuti-rehat-dalam-negara-form.php`.
+  - `cr1-aca` uses `CutiRehatDalamNegaraAkademikFormAction` and `cuti-rehat-dalam-negara-akademik-form.php`.
+  - `cr2` uses `CutiRehatLuarNegaraFormAction` and `cuti-rehat-luar-negara-form.php`.
+  - `ctr` uses `CutiTanpaRekodFormAction` and `cuti-tanpa-rekod-form.php`.
+  - `cs1` uses `CutiSakitFormAction` and `cuti-sakit-form.php`.
+  - `cs2` uses `CutiSakitLanjutanFormAction` and `cuti-sakit-lanjutan-form.php`.
+  - `hso` uses `HsoFormAction` and `hso-form.php`.
+- Removed `src/Web/Cuti/Individu/FormAction.php` and `src/Web/Cuti/Individu/form.php`; there is no longer one conditional mega-form for these write workflows.
 - Verified PHP syntax for the changed Cuti route/action/template/service files and routes config.
 - Verified unauthenticated HTTP guard for `/cuti/individu/pilih` and `/cuti/individu/cr1?id=1`.
 - Verified catalog service probe returns 5 active picker links: `28`, `1`, `2`, `20`, `21`.

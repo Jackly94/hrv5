@@ -33,7 +33,12 @@ final readonly class LantikanReferenceService
             'programs' => $this->referenceData->programs(),
             'jobGrades' => $this->referenceData->jobGrades(),
             'jobGradesNonSpdp' => $this->jobGradesNonSpdp(),
+            'jobGradesKhas' => $this->jobGradesKhas(),
+            'jobGradesSpdp' => $this->jobGradesSpdp(),
             'appointmentStatuses' => $this->appointmentStatuses(),
+            'appointmentStatusesKhas' => $this->appointmentStatusesKhas(),
+            'appointmentStatusesPhs' => $this->appointmentStatusesPhs(),
+            'appointmentStatusesSpdp' => $this->appointmentStatusesSpdp(),
             'sandanganStatuses' => $this->sandanganStatuses(),
             'appointmentTypes' => $this->appointmentTypes(),
             'departments' => $this->referenceData->departments(),
@@ -95,11 +100,27 @@ final readonly class LantikanReferenceService
 
         return [
             ...$base,
-            ['name' => 'statLantikan', 'label' => 'Status Lantikan', 'type' => 'select', 'options' => 'appointmentStatuses', 'required' => true],
+            ['name' => 'statLantikan', 'label' => 'Status Lantikan', 'type' => 'select', 'options' => match ($flow) {
+                'khas' => 'appointmentStatusesKhas',
+                'phs' => 'appointmentStatusesPhs',
+                'spdp' => 'appointmentStatusesSpdp',
+                default => 'appointmentStatuses',
+            }, 'required' => true],
             ['name' => 'startDateLantik', 'label' => 'Tarikh Mula Lantikan', 'type' => 'date', 'required' => true],
             ['name' => 'endDateLantik', 'label' => 'Tarikh Tamat Lantikan', 'type' => 'date', 'required' => true],
-            ['name' => 'gredJawatan', 'label' => 'Gred Jawatan', 'type' => 'select', 'options' => $flow === 'staf-baru' ? 'jobGradesNonSpdp' : 'jobGrades', 'required' => true],
-            ['name' => 'gredJawatan_hakiki', 'label' => 'Gred Jawatan Hakiki', 'type' => 'select', 'options' => $flow === 'staf-baru' ? 'jobGradesNonSpdp' : 'jobGrades', 'required' => in_array($flow, ['staf-baru', 'spdp'], true)],
+            ['name' => 'gredJawatan', 'label' => 'Gred Jawatan', 'type' => 'select', 'options' => match ($flow) {
+                'khas' => 'jobGradesKhas',
+                'staf-baru' => 'jobGradesNonSpdp',
+                'spdp' => 'jobGradesSpdp',
+                default => 'jobGrades',
+            }, 'required' => true],
+            ...(in_array($flow, ['khas', 'phs'], true) ? [] : [
+                ['name' => 'gredJawatan_hakiki', 'label' => 'Gred Jawatan Hakiki', 'type' => 'select', 'options' => match ($flow) {
+                    'staf-baru' => 'jobGradesNonSpdp',
+                    'spdp' => 'jobGradesSpdp',
+                    default => 'jobGrades',
+                }, 'required' => in_array($flow, ['staf-baru', 'spdp'], true)],
+            ]),
             ['name' => 'statSandangan', 'label' => 'Status Sandangan', 'type' => 'select', 'options' => 'sandanganStatuses', 'required' => true],
             ['name' => 'ApmtTypeCd', 'label' => 'Jenis Lantikan', 'type' => 'select', 'options' => 'appointmentTypes', 'required' => true],
             ['name' => 'noWaran', 'label' => 'No. Waran', 'type' => 'text', 'required' => false],
@@ -150,10 +171,70 @@ final readonly class LantikanReferenceService
     /**
      * @return list<array{id: string, name: string}>
      */
+    private function appointmentStatusesKhas(): array
+    {
+        return $this->referenceData->options(
+            'SELECT ApmtStatusCd, ApmtStatusNm FROM hronline.appointmentstatus WHERE ApmtStatusCd = 2 ORDER BY ApmtStatusNm',
+            'ApmtStatusCd',
+            'ApmtStatusNm',
+        );
+    }
+
+    /**
+     * @return list<array{id: string, name: string}>
+     */
+    private function appointmentStatusesPhs(): array
+    {
+        return $this->referenceData->options(
+            'SELECT ApmtStatusCd, ApmtStatusNm FROM hronline.appointmentstatus WHERE ApmtStatusCd IN (6, 7) ORDER BY ApmtStatusNm',
+            'ApmtStatusCd',
+            'ApmtStatusNm',
+        );
+    }
+
+    /**
+     * @return list<array{id: string, name: string}>
+     */
+    private function appointmentStatusesSpdp(): array
+    {
+        return $this->referenceData->options(
+            'SELECT ApmtStatusCd, ApmtStatusNm FROM hronline.appointmentstatus WHERE ApmtStatusCd IN (2, 3) ORDER BY ApmtStatusCd',
+            'ApmtStatusCd',
+            'ApmtStatusNm',
+        );
+    }
+
+    /**
+     * @return list<array{id: string, name: string}>
+     */
     private function jobGradesNonSpdp(): array
     {
         return $this->referenceData->options(
             "SELECT id, fname FROM hronline.gredjawatan WHERE scheme_type IS NULL OR scheme_type != 'SPDP' ORDER BY fname",
+            'id',
+            'fname',
+        );
+    }
+
+    /**
+     * @return list<array{id: string, name: string}>
+     */
+    private function jobGradesKhas(): array
+    {
+        return $this->referenceData->options(
+            'SELECT id, fname FROM hronline.gredjawatan WHERE isKhas = 1 ORDER BY nama',
+            'id',
+            'fname',
+        );
+    }
+
+    /**
+     * @return list<array{id: string, name: string}>
+     */
+    private function jobGradesSpdp(): array
+    {
+        return $this->referenceData->options(
+            "SELECT id, fname FROM hronline.gredjawatan WHERE scheme_type = 'SPDP' ORDER BY fname",
             'id',
             'fname',
         );

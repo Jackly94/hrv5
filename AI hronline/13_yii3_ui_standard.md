@@ -6,6 +6,25 @@ This is the agreed UI standard for migrated HROnline Yii3 pages.
 
 Use this document as the default reference before adding or changing a Yii3 page.
 
+## Migration Maintainability Standard
+
+Migrated code must favor maintainer-friendly implementation over high-level abstraction.
+
+Standards:
+
+- Avoid high-level programming style that hides workflow behavior behind generic builders, metadata engines, dynamic callbacks, or clever indirection.
+- Do not over-engineer simple migrated workflows. Prefer normal, explicit PHP/Yii3 action, view, and service code that a maintainer can read without learning a custom mini-framework first.
+- Keep route, action, view, field names, validation paths, and business rules easy to trace from the URL.
+- Use direct normal form markup for final migrated forms; metadata-style form rendering is temporary scaffolding only.
+- Shared helpers and services are acceptable when they remove real duplication, but they must not make one workflow hard to understand.
+- A fast migration that lowers maintainability is rejected.
+
+When revisiting older migrated modules:
+
+- Treat existing metadata loops, shared conditional mega-actions, and route-by-slug multiplexers as migration debt unless they are only simple read/list rendering.
+- Any touched write workflow must be brought up to this standard before it is considered done.
+- Use `AI hronline/19_migration_standard_revisit_audit.md` as the current module-by-module cleanup register.
+
 ## Core Page Structure
 
 Every migrated page should use one main page surface:

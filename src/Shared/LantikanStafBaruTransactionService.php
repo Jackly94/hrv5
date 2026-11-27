@@ -36,7 +36,7 @@ final readonly class LantikanStafBaruTransactionService
             return $dryRun;
         }
 
-        $prepared = $this->stafBaru->prepare($input, true);
+        $prepared = $this->stafBaru->prepare($input, true, false);
         if (!$prepared['success']) {
             $prepared['mode'] = 'live';
 
@@ -124,6 +124,7 @@ final readonly class LantikanStafBaruTransactionService
             return null;
         }
 
+        $statLantikan = (string) ($staff['statLantikan'] ?? '');
         $tables = [
             'hronline.tblprcobiodata',
             'hronline.umsper',
@@ -146,9 +147,11 @@ final readonly class LantikanStafBaruTransactionService
 
         $checks = [];
         foreach ($tables as $table) {
+            $required = $table !== 'hronline.tblrscoprobtnperiod' || $statLantikan === '1';
             $checks[] = [
                 'table' => $table,
-                'exists' => $this->recordExists($table, $icno),
+                'required' => $required,
+                'exists' => $required && $this->recordExists($table, $icno),
             ];
         }
 

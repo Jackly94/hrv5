@@ -896,6 +896,18 @@ final readonly class AttendanceService
     }
 
     /**
+     * @return array<string, mixed>|null
+     */
+    public function supervisorStaffAttendanceReport(string $supervisorIcno, string $staffIcno, int $year, int $month): ?array
+    {
+        if (!$this->supervisorCanViewStaff($supervisorIcno, $staffIcno)) {
+            return null;
+        }
+
+        return $this->attendanceReport($staffIcno, $year, $month);
+    }
+
+    /**
      * @param array<string, mixed> $filters
      * @return list<array<string, mixed>>
      */
@@ -933,6 +945,38 @@ final readonly class AttendanceService
         return $this->mapRows($rows, fn (array $row): array => $this->mapStaffRow($row));
     }
 
+    private function supervisorCanViewStaff(string $supervisorIcno, string $staffIcno): bool
+    {
+        $scope = $this->supervisorAccessScope($supervisorIcno);
+        if (!(bool) ($scope['authorized'] ?? false) || trim($staffIcno) === '') {
+            return false;
+        }
+
+        [$where, $params] = $this->supervisorStaffWhere($scope, []);
+        if ($where === []) {
+            return false;
+        }
+
+        $where[] = 'staff.ICNO = :staffIcno';
+        $params[':staffIcno'] = $staffIcno;
+
+        $row = $this->db->createCommand(
+            sprintf(
+                <<<SQL
+                SELECT staff.ICNO
+                FROM hronline.tblprcobiodata staff
+                LEFT JOIN hronline.gredjawatan job ON job.id = staff.gredJawatan
+                WHERE %s
+                LIMIT 1
+                SQL,
+                implode(' AND ', $where),
+            ),
+            $params,
+        )->queryOne();
+
+        return is_array($row);
+    }
+
     /**
      * @param array<string, mixed> $filters
      * @return array<string, mixed>
@@ -952,8 +996,8 @@ final readonly class AttendanceService
                 'peraku' => $officers[$staffIcno]['peraku'] ?? '-',
                 'pelulus' => $officers[$staffIcno]['pelulus'] ?? '-',
                 'wbb' => $workingPatterns[$staffIcno] ?? '--Tiada WBB--',
-                'wbbUrl' => self::LEGACY_BASE . '/kehadiran/wbb-list?id=' . rawurlencode($staffIcno),
-                'pegawaiUrl' => self::LEGACY_BASE . '/kehadiran/set-peg?id=' . rawurlencode($staffIcno),
+                'wbbUrl' => '/kehadiran/wbb-list?id=' . rawurlencode($staffIcno),
+                'pegawaiUrl' => '/kehadiran/set-peg?id=' . rawurlencode($staffIcno),
             ];
         }
 
@@ -961,6 +1005,234 @@ final readonly class AttendanceService
             'filters' => $filters,
             'rows' => $rows,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function supervisorWbbList(string $supervisorIcno, string $staffIcno, ?int $wpId = null): ?array
+    {
+        if (!$this->supervisorCanViewStaff($supervisorIcno, $staffIcno)) {
+            return null;
+        }
+
+        $staff = $this->staffProfile($staffIcno);
+        if ($staff === null) {
+            return null;
+        }
+
+        $rows = $this->db->createCommand(
+            <<<SQL
+            SELECT wp.id, wp.wp_id, wp.entry_dt, wp.start_date, wp.end_date, wp.status,
+                   wp.remark, ref.jenis_wp, ref.detail
+            FROM attendance.tbl_wp wp
+            LEFT JOIN attendance.ref_wp ref ON ref.id = wp.wp_id
+            WHERE wp.icno = :icno
+            ORDER BY wp.start_date DESC, wp.id DESC
+            SQL,
+            [':icno' => $staffIcno],
+        )->queryAll();
+
+        $editRow = null;
+        if ($wpId !== null) {
+            $row = $this->db->createCommand(
+                <<<SQL
+                SELECT wp.id, wp.wp_id, wp.start_date, wp.end_date
+                FROM attendance.tbl_wp wp
+                WHERE wp.id = :id
+                  AND wp.icno = :icno
+                LIMIT 1
+                SQL,
+                [':id' => $wpId, ':icno' => $staffIcno],
+            )->queryOne();
+            $editRow = is_array($row) ? $row : null;
+        }
+
+        return [
+            'staff' => $staff,
+            'rows' => $this->mapRows($rows, fn (array $row): array => $this->mapWbbAssignmentRow($row)),
+            'options' => $this->workingPatternOptions(),
+            'form' => [
+                'id' => $editRow === null ? null : (int) ($editRow['id'] ?? 0),
+                'wpId' => $editRow === null ? '' : (string) ($editRow['wp_id'] ?? ''),
+                'startDate' => $editRow === null ? '' : $this->dateOnly($editRow['start_date'] ?? null),
+                'endDate' => $editRow === null ? '' : $this->dateOnly($editRow['end_date'] ?? null),
+            ],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array{success: bool, message: string}
+     */
+    public function saveSupervisorWbb(string $supervisorIcno, string $staffIcno, array $input, ?int $wpId = null): array
+    {
+        if (!$this->supervisorCanViewStaff($supervisorIcno, $staffIcno)) {
+            return ['success' => false, 'message' => 'Kakitangan tidak dijumpai dalam skop penyelia.'];
+        }
+
+        $patternId = $this->positiveInt($input['wp_id'] ?? null);
+        $startDate = $this->dateInput($input['start_date'] ?? null);
+        $endDate = $this->dateInput($input['end_date'] ?? null);
+        if ($patternId === null || !$this->workingPatternExists($patternId)) {
+            return ['success' => false, 'message' => 'Pilih WBB yang sah.'];
+        }
+        if ($startDate === '') {
+            return ['success' => false, 'message' => 'Tarikh mula diperlukan.'];
+        }
+        if ($endDate !== '' && $endDate < $startDate) {
+            return ['success' => false, 'message' => 'Tarikh tamat tidak boleh lebih awal daripada tarikh mula.'];
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $fields = [
+            'wp_id' => $patternId,
+            'icno' => $staffIcno,
+            'entry_dt' => $now,
+            'remark' => 'Ditambah Oleh Penyelia J/F/P/I/U',
+            'status' => 'APPROVED',
+            'ver_by' => $supervisorIcno,
+            'ver_dt' => $now,
+            'ver_remark' => 'Ditambah Oleh Penyelia J/F/P/I/U',
+            'app_by' => $supervisorIcno,
+            'app_dt' => $now,
+            'app_remark' => 'Ditambah Oleh Penyelia J/F/P/I/U',
+            'start_date' => $startDate,
+            'end_date' => $endDate === '' ? null : $endDate,
+        ];
+
+        if ($wpId !== null) {
+            $exists = $this->db->createCommand(
+                'SELECT id FROM attendance.tbl_wp WHERE id = :id AND icno = :icno LIMIT 1',
+                [':id' => $wpId, ':icno' => $staffIcno],
+            )->queryOne();
+            if (!is_array($exists)) {
+                return ['success' => false, 'message' => 'Rekod WBB tidak dijumpai.'];
+            }
+
+            $updated = (int) $this->db->createCommand()->update('attendance.tbl_wp', $fields, ['id' => $wpId, 'icno' => $staffIcno])->execute();
+
+            return ['success' => $updated > 0, 'message' => $updated > 0 ? 'WBB telah dikemaskini.' : 'Tiada perubahan WBB disimpan.'];
+        }
+
+        $inserted = (int) $this->db->createCommand()->insert('attendance.tbl_wp', $fields)->execute();
+
+        return ['success' => $inserted > 0, 'message' => $inserted > 0 ? 'WBB telah ditambah.' : 'WBB tidak berjaya ditambah.'];
+    }
+
+    /**
+     * @return array{success: bool, message: string, staffIcno: string}
+     */
+    public function deleteSupervisorWbb(string $supervisorIcno, int $wpId): array
+    {
+        $row = $this->db->createCommand(
+            'SELECT id, icno FROM attendance.tbl_wp WHERE id = :id LIMIT 1',
+            [':id' => $wpId],
+        )->queryOne();
+        if (!is_array($row)) {
+            return ['success' => false, 'message' => 'Rekod WBB tidak dijumpai.', 'staffIcno' => ''];
+        }
+
+        $staffIcno = (string) ($row['icno'] ?? '');
+        if (!$this->supervisorCanViewStaff($supervisorIcno, $staffIcno)) {
+            return ['success' => false, 'message' => 'Rekod WBB di luar skop penyelia.', 'staffIcno' => $staffIcno];
+        }
+
+        $deleted = (int) $this->db->createCommand()->delete('attendance.tbl_wp', ['id' => $wpId, 'icno' => $staffIcno])->execute();
+
+        return ['success' => $deleted > 0, 'message' => $deleted > 0 ? 'WBB telah dibuang.' : 'WBB tidak berjaya dibuang.', 'staffIcno' => $staffIcno];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function supervisorOfficerSetup(string $supervisorIcno, string $staffIcno): ?array
+    {
+        if (!$this->supervisorCanViewStaff($supervisorIcno, $staffIcno)) {
+            return null;
+        }
+
+        $staff = $this->staffProfile($staffIcno);
+        if ($staff === null) {
+            return null;
+        }
+
+        $officer = $this->db->createCommand(
+            <<<SQL
+            SELECT set_pegawai_id, pemohon_icno, peraku_icno, pelulus_icno, jenis_cuti_id, set_status
+            FROM hrm.cuti_set_pegawai
+            WHERE pemohon_icno = :icno
+            ORDER BY set_status DESC, set_pegawai_id DESC
+            LIMIT 1
+            SQL,
+            [':icno' => $staffIcno],
+        )->queryOne();
+
+        return [
+            'staff' => $staff,
+            'officer' => [
+                'id' => is_array($officer) ? (int) ($officer['set_pegawai_id'] ?? 0) : null,
+                'perakuIcno' => is_array($officer) ? $this->value($officer['peraku_icno'] ?? null, '') : '',
+                'pelulusIcno' => is_array($officer) ? $this->value($officer['pelulus_icno'] ?? null, '') : '',
+            ],
+            'staffOptions' => $this->activeStaffOptions(),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array{success: bool, message: string}
+     */
+    public function saveSupervisorOfficerSetup(string $supervisorIcno, string $staffIcno, array $input): array
+    {
+        if (!$this->supervisorCanViewStaff($supervisorIcno, $staffIcno)) {
+            return ['success' => false, 'message' => 'Kakitangan tidak dijumpai dalam skop penyelia.'];
+        }
+
+        $perakuIcno = $this->value($input['peraku_icno'] ?? null, '');
+        $pelulusIcno = $this->value($input['pelulus_icno'] ?? null, '');
+        if ($pelulusIcno === '') {
+            return ['success' => false, 'message' => 'Pegawai pelulus diperlukan.'];
+        }
+        if ($perakuIcno !== '' && !$this->activeStaffExists($perakuIcno)) {
+            return ['success' => false, 'message' => 'Pegawai peraku tidak sah.'];
+        }
+        if (!$this->activeStaffExists($pelulusIcno)) {
+            return ['success' => false, 'message' => 'Pegawai pelulus tidak sah.'];
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $fields = [
+            'pemohon_icno' => $staffIcno,
+            'jenis_cuti_id' => 1,
+            'peraku_icno' => $perakuIcno === '' ? null : $perakuIcno,
+            'pelulus_icno' => $pelulusIcno,
+            'penyelia_set_icno' => $supervisorIcno,
+            'set_datestamp' => $now,
+            'set_status' => 1,
+        ];
+
+        $existing = $this->db->createCommand(
+            <<<SQL
+            SELECT set_pegawai_id
+            FROM hrm.cuti_set_pegawai
+            WHERE pemohon_icno = :icno
+            ORDER BY set_status DESC, set_pegawai_id DESC
+            LIMIT 1
+            SQL,
+            [':icno' => $staffIcno],
+        )->queryOne();
+
+        if (is_array($existing)) {
+            $id = (int) ($existing['set_pegawai_id'] ?? 0);
+            $updated = (int) $this->db->createCommand()->update('hrm.cuti_set_pegawai', $fields, ['set_pegawai_id' => $id])->execute();
+
+            return ['success' => $updated > 0, 'message' => $updated > 0 ? 'Pegawai Peraku/Pelulus telah dikemaskini.' : 'Tiada perubahan pegawai disimpan.'];
+        }
+
+        $inserted = (int) $this->db->createCommand()->insert('hrm.cuti_set_pegawai', $fields)->execute();
+
+        return ['success' => $inserted > 0, 'message' => $inserted > 0 ? 'Pegawai Peraku/Pelulus telah disimpan.' : 'Pegawai Peraku/Pelulus tidak berjaya disimpan.'];
     }
 
     /**
@@ -1360,7 +1632,7 @@ final readonly class AttendanceService
                 'wfh' => $totalWfh,
                 'wfo' => max(0, $totalStaff - $totalWfh),
                 'totalStaff' => $totalStaff,
-                'editUrl' => self::LEGACY_BASE . '/kehadiran/wfh-edit-day?date=' . rawurlencode($date),
+                'editUrl' => '/kehadiran/wfh-edit-day?date=' . rawurlencode($date) . ($departmentId === null ? '' : '&dept_id=' . rawurlencode((string) $departmentId)),
             ];
             $cursor = $cursor->modify('+1 day');
         }
@@ -1376,46 +1648,223 @@ final readonly class AttendanceService
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array<string, mixed>|null
      */
-    public function supervisorWfhSchedule(string $icno, int $month, int $year, ?int $departmentId = null): array
+    public function supervisorWfhDay(string $icno, string $date, ?int $departmentId = null): ?array
     {
-        $month = max(1, min(12, $month));
-        $filters = ['deptId' => $departmentId];
-        $staff = $this->supervisorStaff($icno, $filters);
-        $icnos = $this->staffIcnoList($staff);
-        $start = new DateTimeImmutable(sprintf('%04d-%02d-01', $year, $month));
-        $end = $start->modify('last day of this month');
-        $wfhDays = $this->wfhDaysFor($icnos, $start->format('Y-m-d'), $end->format('Y-m-d'));
-
-        $days = [];
-        $cursor = $start;
-        while ($cursor <= $end) {
-            $days[] = [
-                'date' => $cursor->format('Y-m-d'),
-                'day' => $cursor->format('d'),
-                'weekday' => $cursor->format('D'),
-            ];
-            $cursor = $cursor->modify('+1 day');
+        $date = $this->dateOnly($date);
+        if ($date === '') {
+            return null;
         }
 
-        $rows = [];
+        $staff = $this->supervisorStaff($icno, ['deptId' => $departmentId]);
+        $icnos = $this->staffIcnoList($staff);
+        $totalStaff = count($staff);
+        if ($icnos === []) {
+            return [
+                'date' => $date,
+                'dateLabel' => $this->formatDate($date),
+                'departmentId' => $departmentId,
+                'totalStaff' => 0,
+                'totalWfh' => 0,
+                'totalWfo' => 0,
+                'percentWfh' => 0.0,
+                'percentWfo' => 0.0,
+                'wfhRows' => [],
+                'availableStaff' => [],
+            ];
+        }
+
+        [$inSql, $params] = $this->inConditionParams('staff', $icnos);
+        $params[':date'] = $date;
+        $rows = $this->db->createCommand(
+            <<<SQL
+            SELECT wfh.id, wfh.icno, wfh.start_date, wfh.end_date, wfh.full_date, wfh.remark, wfh.status,
+                   staff.CONm AS staff_name, staff.COOldID, dept.shortname AS department_shortname, job.gred AS job_grade
+            FROM attendance.tbl_wfh wfh
+            LEFT JOIN hronline.tblprcobiodata staff ON staff.ICNO = wfh.icno
+            LEFT JOIN hronline.department dept ON dept.id = staff.DeptId
+            LEFT JOIN hronline.gredjawatan job ON job.id = staff.gredJawatan
+            WHERE wfh.icno IN ($inSql)
+              AND wfh.status = 'APPROVED'
+              AND wfh.start_date <= :date
+              AND wfh.end_date >= :date
+            ORDER BY staff.CONm ASC
+            SQL,
+            $params,
+        )->queryAll();
+
+        $wfhRows = $this->mapRows($rows, fn (array $row): array => [
+            'id' => (string) ($row['id'] ?? ''),
+            'icno' => $this->value($row['icno'] ?? null, ''),
+            'staffName' => $this->employees->displayName($row['staff_name'] ?? null),
+            'staffNo' => $this->value($row['COOldID'] ?? null),
+            'grade' => $this->value($row['job_grade'] ?? null),
+            'department' => $this->value($row['department_shortname'] ?? null),
+            'dateRange' => $this->dateRangeText($row['start_date'] ?? null, $row['end_date'] ?? null),
+            'remark' => $this->value($row['remark'] ?? null),
+            'status' => $this->value($row['status'] ?? null),
+        ]);
+
+        $wfhIcnos = array_values(array_unique(array_filter(array_map(static fn (array $row): string => (string) ($row['icno'] ?? ''), $wfhRows))));
+        $availableStaff = [];
         foreach ($staff as $person) {
+            if (!in_array((string) ($person['icno'] ?? ''), $wfhIcnos, true)) {
+                $availableStaff[] = $person;
+            }
+        }
+
+        $totalWfh = count($wfhIcnos);
+        $totalWfo = max(0, $totalStaff - $totalWfh);
+
+        return [
+            'date' => $date,
+            'dateLabel' => $this->formatDate($date),
+            'departmentId' => $departmentId,
+            'totalStaff' => $totalStaff,
+            'totalWfh' => $totalWfh,
+            'totalWfo' => $totalWfo,
+            'percentWfh' => $totalStaff === 0 ? 0.0 : round($totalWfh / $totalStaff * 100, 2),
+            'percentWfo' => $totalStaff === 0 ? 0.0 : round($totalWfo / $totalStaff * 100, 2),
+            'wfhRows' => $wfhRows,
+            'availableStaff' => $availableStaff,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array{success: bool, message: string}
+     */
+    public function saveSupervisorWfhDay(string $icno, string $date, array $input, ?int $departmentId = null): array
+    {
+        $day = $this->supervisorWfhDay($icno, $date, $departmentId);
+        if ($day === null) {
+            return ['success' => false, 'message' => 'Tarikh WFH tidak sah.'];
+        }
+
+        $mode = (string) ($input['mode'] ?? '');
+        if ($mode === 'remove') {
+            $ids = $this->intList($input['remove_id'] ?? []);
+            if ($ids === []) {
+                return ['success' => false, 'message' => 'Pilih rekod WFH untuk ditukar ke WFO.'];
+            }
+
+            $allowedIds = array_map(static fn (array $row): int => (int) ($row['id'] ?? 0), $day['wfhRows']);
+            $ids = array_values(array_intersect($ids, $allowedIds));
+            if ($ids === []) {
+                return ['success' => false, 'message' => 'Rekod WFH tidak dijumpai dalam skop penyelia.'];
+            }
+
+            $deleted = $this->db->transaction(function () use ($ids): int {
+                $count = 0;
+                foreach ($ids as $id) {
+                    $count += (int) $this->db->createCommand()->delete('attendance.tbl_wfh', ['id' => $id])->execute();
+                }
+
+                return $count;
+            });
+
+            return ['success' => $deleted > 0, 'message' => $deleted > 0 ? 'Rekod WFH telah ditukar ke WFO.' : 'Tiada rekod WFH dikemaskini.'];
+        }
+
+        if ($mode === 'add') {
+            $selectedIcnos = array_values(array_unique(array_filter(array_map('strval', (array) ($input['add_icno'] ?? [])))));
+            if ($selectedIcnos === []) {
+                return ['success' => false, 'message' => 'Pilih kakitangan untuk dimasukkan ke WFH.'];
+            }
+
+            $availableIcnos = array_map(static fn (array $row): string => (string) ($row['icno'] ?? ''), $day['availableStaff']);
+            $selectedIcnos = array_values(array_intersect($selectedIcnos, $availableIcnos));
+            if ($selectedIcnos === []) {
+                return ['success' => false, 'message' => 'Kakitangan tidak dijumpai dalam skop penyelia atau sudah WFH.'];
+            }
+
+            $date = (string) $day['date'];
+            $now = date('Y-m-d H:i:s');
+            $fullDate = $this->formatDate($date) . ' to ' . $this->formatDate($date);
+            $inserted = $this->db->transaction(function () use ($selectedIcnos, $date, $now, $fullDate, $icno): int {
+                $count = 0;
+                foreach ($selectedIcnos as $staffIcno) {
+                    $count += (int) $this->db->createCommand()->insert('attendance.tbl_wfh', [
+                        'icno' => $staffIcno,
+                        'entry_dt' => $now,
+                        'start_date' => $date,
+                        'end_date' => $date,
+                        'full_date' => $fullDate,
+                        'tempoh' => 1,
+                        'set_by' => $icno,
+                        'status' => 'APPROVED',
+                        'remark' => 'ADDED BY PENYELIA',
+                    ])->execute();
+                }
+
+                return $count;
+            });
+
+            return ['success' => $inserted > 0, 'message' => $inserted > 0 ? 'Kakitangan telah dimasukkan ke senarai WFH.' : 'Tiada rekod WFH ditambah.'];
+        }
+
+        return ['success' => false, 'message' => 'Tindakan WFH tidak disokong.'];
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     */
+    public function supervisorWfhSchedule(string $icno, int $month, int $year, array $filters = [], string $selectedStaffIcno = ''): array
+    {
+        $month = max(1, min(12, $month));
+        $staff = $this->supervisorStaff($icno, $filters);
+        $start = new DateTimeImmutable(sprintf('%04d-%02d-01', $year, $month));
+        $end = $start->modify('last day of this month');
+        $selectedStaffIcno = trim($selectedStaffIcno);
+
+        $days = [];
+        $rows = [];
+        $selectedStaff = null;
+        if ($selectedStaffIcno !== '') {
+            foreach ($staff as $person) {
+                if ((string) ($person['icno'] ?? '') === $selectedStaffIcno) {
+                    $selectedStaff = $person;
+                    break;
+                }
+            }
+        }
+
+        if ($selectedStaff !== null) {
+            $cursor = $start;
+            while ($cursor <= $end) {
+                $days[] = [
+                    'date' => $cursor->format('Y-m-d'),
+                    'day' => $cursor->format('d'),
+                    'weekday' => $cursor->format('D'),
+                ];
+                $cursor = $cursor->modify('+1 day');
+            }
+
+            $wfhDays = $this->wfhDaysFor([$selectedStaffIcno], $start->format('Y-m-d'), $end->format('Y-m-d'));
             $cells = [];
             foreach ($days as $day) {
                 $cells[] = [
                     'date' => $day['date'],
-                    'status' => isset($wfhDays[(string) $person['icno']][$day['date']]) ? 'WFH' : 'WFO',
+                    'status' => isset($wfhDays[$selectedStaffIcno][$day['date']]) ? 'WFH' : 'WFO',
                 ];
             }
-            $rows[] = ['staff' => $person, 'cells' => $cells];
+            $rows[] = ['staff' => $selectedStaff, 'cells' => $cells];
+        } else {
+            foreach ($staff as $person) {
+                $rows[] = ['staff' => $person];
+            }
         }
 
         return [
             'month' => $month,
             'monthName' => $this->monthName($month),
             'year' => $year,
-            'departmentId' => $departmentId,
+            'departmentId' => is_numeric($filters['deptId'] ?? null) ? (int) $filters['deptId'] : null,
+            'filters' => $filters,
+            'selectedStaffIcno' => $selectedStaffIcno,
+            'selectedStaff' => $selectedStaff,
             'days' => $days,
             'rows' => $rows,
         ];
@@ -2939,6 +3388,99 @@ final readonly class AttendanceService
     }
 
     /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function mapWbbAssignmentRow(array $row): array
+    {
+        return [
+            'id' => (int) ($row['id'] ?? 0),
+            'wpId' => (int) ($row['wp_id'] ?? 0),
+            'label' => $this->value($row['jenis_wp'] ?? null, '--Tiada WBB--'),
+            'detail' => $this->value($row['detail'] ?? null, ''),
+            'startDate' => $this->formatDate($row['start_date'] ?? null),
+            'endDate' => $this->formatDate($row['end_date'] ?? null),
+            'status' => $this->wbbStatusLabel($row['status'] ?? null),
+            'remark' => $this->value($row['remark'] ?? null),
+        ];
+    }
+
+    /**
+     * @return list<array{id: int, label: string}>
+     */
+    private function workingPatternOptions(): array
+    {
+        $rows = $this->db->createCommand(
+            <<<SQL
+            SELECT id, jenis_wp, detail
+            FROM attendance.ref_wp
+            WHERE status = 1
+            ORDER BY jenis_wp ASC, id ASC
+            SQL,
+        )->queryAll();
+
+        return $this->mapRows($rows, function (array $row): array {
+            $jenis = $this->value($row['jenis_wp'] ?? null, '');
+            $detail = $this->value($row['detail'] ?? null, '');
+            $label = trim($jenis . ($detail === '' ? '' : ' - ' . $detail));
+
+            return [
+                'id' => (int) ($row['id'] ?? 0),
+                'label' => $label === '' ? 'WP #' . (string) ($row['id'] ?? '') : $label,
+            ];
+        });
+    }
+
+    private function workingPatternExists(int $id): bool
+    {
+        $row = $this->db->createCommand(
+            'SELECT id FROM attendance.ref_wp WHERE id = :id AND status = 1 LIMIT 1',
+            [':id' => $id],
+        )->queryOne();
+
+        return is_array($row);
+    }
+
+    /**
+     * @return list<array{icno: string, label: string}>
+     */
+    private function activeStaffOptions(): array
+    {
+        $rows = $this->db->createCommand(
+            <<<SQL
+            SELECT staff.ICNO, staff.CONm, staff.COOldID, dept.shortname AS department_shortname
+            FROM hronline.tblprcobiodata staff
+            LEFT JOIN hronline.department dept ON dept.id = staff.DeptId
+            WHERE staff.status = 1
+            ORDER BY staff.CONm ASC
+            LIMIT 5000
+            SQL,
+        )->queryAll();
+
+        return $this->mapRows($rows, function (array $row): array {
+            $name = $this->employees->displayName($row['CONm'] ?? null);
+            $staffNo = $this->value($row['COOldID'] ?? null, '');
+            $department = $this->value($row['department_shortname'] ?? null, '');
+            $meta = array_values(array_filter([$staffNo, $department], static fn (string $value): bool => $value !== ''));
+
+            return [
+                'icno' => $this->value($row['ICNO'] ?? null, ''),
+                'label' => $name . ($meta === [] ? '' : ' (' . implode(' / ', $meta) . ')'),
+            ];
+        });
+    }
+
+    private function activeStaffExists(string $icno): bool
+    {
+        $row = $this->db->createCommand(
+            'SELECT ICNO FROM hronline.tblprcobiodata WHERE ICNO = :icno AND status = 1 LIMIT 1',
+            [':icno' => $icno],
+        )->queryOne();
+
+        return is_array($row);
+    }
+
+    /**
      * @param list<string> $icnos
      * @return array<string, string>
      */
@@ -3441,6 +3983,25 @@ final readonly class AttendanceService
     }
 
     /**
+     * @return list<int>
+     */
+    private function intList(mixed $values): array
+    {
+        if (!is_array($values)) {
+            return [];
+        }
+
+        $ids = [];
+        foreach ($values as $value) {
+            if (is_numeric($value) && (int) $value > 0) {
+                $ids[] = (int) $value;
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
      * @param array<string, mixed> $row
      * @return array<string, mixed>
      */
@@ -3884,6 +4445,43 @@ final readonly class AttendanceService
         $timestamp = strtotime($value);
 
         return $timestamp === false ? '' : date('Y-m-d', $timestamp);
+    }
+
+    private function dateInput(mixed $value): string
+    {
+        $value = $this->value($value, '');
+        if ($value === '') {
+            return '';
+        }
+
+        foreach (['Y-m-d', 'd/m/Y', 'd-m-Y'] as $format) {
+            $date = DateTimeImmutable::createFromFormat('!' . $format, $value);
+            if ($date instanceof DateTimeImmutable) {
+                return $date->format('Y-m-d');
+            }
+        }
+
+        return $this->dateOnly($value);
+    }
+
+    private function positiveInt(mixed $value): ?int
+    {
+        if (!is_numeric($value) || (int) $value <= 0) {
+            return null;
+        }
+
+        return (int) $value;
+    }
+
+    private function wbbStatusLabel(mixed $status): string
+    {
+        return match (strtoupper($this->value($status, ''))) {
+            'ENTRY' => 'Menunggu Semakan',
+            'VERIFIED' => 'Menunggu Kelulusan',
+            'APPROVED' => 'Diluluskan',
+            'REJECTED' => 'Ditolak',
+            default => $this->value($status),
+        };
     }
 
     private function value(mixed $value, string $fallback = '-'): string

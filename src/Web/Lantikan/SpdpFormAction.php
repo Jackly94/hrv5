@@ -11,7 +11,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Yiisoft\Yii\View\Renderer\WebViewRenderer;
 
-final readonly class FormAction
+final readonly class SpdpFormAction
 {
     public function __construct(
         private WebViewRenderer $viewRenderer,
@@ -27,8 +27,7 @@ final readonly class FormAction
             return $this->redirect('/login');
         }
 
-        $flow = $this->flow($request->getUri()->getPath());
-        $form = $this->lantikanService->formBlueprintForIdentity($legacySession['identityId'], $flow);
+        $form = $this->lantikanService->formBlueprintForIdentity($legacySession['identityId'], 'spdp');
         if ($form === null) {
             return $this->redirect('/lantikan/index');
         }
@@ -41,47 +40,20 @@ final readonly class FormAction
                 $input['COEmail'] = $this->lantikanService->suggestedEmail((string) ($input['CONm'] ?? ''));
             }
 
-            $result = isset($input['live_submit'])
-                ? $this->lantikanService->submitAppointment($legacySession['identityId'], $flow, $input, $this->clientIp($request))
-                : $this->lantikanService->dryRunAppointment($flow, $input);
+            $result = $this->lantikanService->dryRunAppointment('spdp', $input);
             $form['values'] = $result['values'];
-
-            if (($result['success'] ?? false) === true && isset($result['resultUrl']) && is_string($result['resultUrl'])) {
-                return $this->redirect($result['resultUrl']);
-            }
         }
 
-        return $this->viewRenderer->render(__DIR__ . '/form', [
+        unset($form['fields']);
+
+        return $this->viewRenderer->render(__DIR__ . '/spdp-form', [
             'form' => $form,
             'result' => $result,
         ]);
     }
 
-    private function flow(string $path): string
-    {
-        return match (true) {
-            str_contains($path, 'lantik-phs') => 'phs',
-            str_contains($path, 'lantik-khas') => 'khas',
-            str_contains($path, 'lantik-spdp') => 'spdp',
-            default => 'staf-baru',
-        };
-    }
-
     private function redirect(string $url): ResponseInterface
     {
         return $this->responseFactory->createResponse(302)->withHeader('Location', $url);
-    }
-
-    private function clientIp(ServerRequestInterface $request): string
-    {
-        $server = $request->getServerParams();
-        foreach (['HTTP_X_REAL_IP', 'HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'] as $key) {
-            $value = $server[$key] ?? null;
-            if (is_string($value) && trim($value) !== '') {
-                return trim(explode(',', $value)[0]);
-            }
-        }
-
-        return 'UNKNOWN';
     }
 }

@@ -49,10 +49,108 @@ final readonly class LantikanStafBaruService
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function emailAvailability(string $email): array
+    {
+        $email = strtolower(trim($email));
+        if ($email === '') {
+            return [
+                'available' => false,
+                'tone' => 'neutral',
+                'message' => '',
+                'email' => $email,
+                'dbExists' => false,
+                'adEnabled' => $this->activeDirectory->enabled(),
+                'adExists' => null,
+            ];
+        }
+
+        $emailErrors = [];
+        $this->validateEmail(['COEmail' => $email], $emailErrors);
+        $emailError = $emailErrors['COEmail'] ?? '';
+        if ($emailError !== '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            return [
+                'available' => false,
+                'tone' => 'danger',
+                'message' => $emailError !== '' ? $emailError : 'Format emel tidak sah.',
+                'email' => $email,
+                'dbExists' => false,
+                'adEnabled' => $this->activeDirectory->enabled(),
+                'adExists' => null,
+            ];
+        }
+
+        $dbExists = (bool) $this->db->createCommand(
+            'SELECT 1 FROM hronline.tblprcobiodata WHERE COEmail = :email LIMIT 1',
+            [':email' => $email],
+        )->queryScalar();
+        if ($dbExists) {
+            return [
+                'available' => false,
+                'tone' => 'danger',
+                'message' => 'Emel rasmi sudah wujud dalam HROnline.',
+                'email' => $email,
+                'dbExists' => true,
+                'adEnabled' => $this->activeDirectory->enabled(),
+                'adExists' => null,
+            ];
+        }
+
+        if (!$this->activeDirectory->enabled()) {
+            return [
+                'available' => true,
+                'tone' => 'warning',
+                'message' => 'Emel belum wujud dalam HROnline. Semakan AD tidak dibuat kerana AD API disabled.',
+                'email' => $email,
+                'dbExists' => false,
+                'adEnabled' => false,
+                'adExists' => null,
+            ];
+        }
+
+        $adCheck = $this->activeDirectory->find($email, 'EMAIL');
+        if (!$adCheck['success']) {
+            return [
+                'available' => false,
+                'tone' => 'danger',
+                'message' => $adCheck['message'],
+                'email' => $email,
+                'dbExists' => false,
+                'adEnabled' => true,
+                'adExists' => null,
+            ];
+        }
+
+        $adExists = ($adCheck['data']['exists'] ?? false) === true;
+        if ($adExists) {
+            return [
+                'available' => false,
+                'tone' => 'danger',
+                'message' => 'Emel rasmi sedang digunakan dalam AD.',
+                'email' => $email,
+                'dbExists' => false,
+                'adEnabled' => true,
+                'adExists' => true,
+            ];
+        }
+
+        return [
+            'available' => true,
+            'tone' => 'success',
+            'message' => 'Emel rasmi boleh digunakan.',
+            'email' => $email,
+            'dbExists' => false,
+            'adEnabled' => true,
+            'adExists' => false,
+        ];
+    }
+
+    /**
      * @param array<string, mixed> $input
      * @return array{success: bool, values: array<string, string>, errors: array<string, string>, proposed: list<string>, plan?: array<string, mixed>}
      */
-    public function prepare(array $input, bool $requireAdCheck): array
+    public function prepare(array $input, bool $requireAdCheck, bool $includePlan = true): array
     {
         $fields = $this->references->appointmentFields('staf-baru');
         $values = $this->normalize($fields, $input);
@@ -80,7 +178,7 @@ final readonly class LantikanStafBaruService
             'proposed' => [],
         ];
 
-        if ($errors === []) {
+        if ($errors === [] && $includePlan) {
             $result['plan'] = $this->insertPlan($values);
         }
 

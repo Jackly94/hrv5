@@ -2034,6 +2034,22 @@ Recorded on 2026-11-20.
   - `STAFBARU-06` and `STAFBARU-07` remain unchecked until approved AD-enabled dummy/UAT write and rollback/concurrency checks are run.
   - Open blockers are recorded in `AI hronline/10_lantikan_pending_migration_execution_plan.md#blocker-register`.
 
+Continuation recorded on 2026-11-27:
+
+- Tightened live Staf Baru preparation so feature-gated submit validates without creating a UMSPER insert plan before the advisory lock.
+- Kept dry-run preview behavior unchanged.
+- Updated `/lantikan/lantik-staf-baru/result` so `hronline.tblrscoprobtnperiod` is displayed as not applicable for non-`statLantikan = 1` appointments.
+- Refreshed Lantikan migration docs to distinguish implemented feature-gated code from UAT-verified completion.
+
+### Active Directory Component Migration
+
+Recorded on 2026-11-27.
+
+- Added `AI hronline/15_active_directory_migration_plan.md`.
+- Expanded `src/Shared/ActiveDirectoryApiClient.php` from a basic scaffold into the Yii3 replacement for old `staff/components/ActiveDirectory.php`.
+- Added AD login support, ICNO-based create/update payload builders, optional `HRONLINE_AD_BASE_URL`, and stricter non-2xx HTTP failure handling.
+- Kept AD create/update unavailable to production Lantikan flow until post-commit status/failure tracking is implemented.
+
 ### STARS Remaining Top Menu Migration Plan
 
 Recorded on 2026-11-20.
@@ -2339,6 +2355,141 @@ Still pending:
 
 - Live direct upload/BKUMS publish test requires explicit safe dummy ICNO and JPEG.
 - Live admin create/update smoke requires explicit safe admin-access test data.
+
+### Lantikan Staf Baru Live Submit Table Count
+
+Recorded on 2026-11-28.
+
+- Verified current Yii3 Staf Baru live submit transaction plan inserts 16 core `hronline.*` tables by default.
+- It inserts 17 core tables when `statLantikan = 1`, because `hronline.tblrscoprobtnperiod` is included.
+- Table list is recorded in `AI hronline/08_lantikan_staf_baru_migration_plan.md` under the transaction boundary section.
+- Post-commit AD create, IdP Mata, notifications, and allocation-profile handoff remain outside the core DB transaction.
+
+### Lantikan PHS Migration Start
+
+Recorded on 2026-11-28.
+
+- Started `LANTIKAN-10` PHS with source mapping in `AI hronline/16_lantikan_phs_migration_plan.md`.
+- Added Yii3 PHS-specific dry-run plan through `LantikanPhsService`.
+- PHS dry-run now models `hronline.umsperpks`, generated `COOldID` with `(S)`, status `6`/`7` restriction, 16 core transaction candidate tables, and side-effect boundaries.
+- Enabled the `/lantikan/index` PHS tile to open local Yii3 `/lantikan/lantik-phs`.
+- Split PHS into maintainer-friendly `PhsFormAction` and `phs-form.php` so PHS UI changes no longer require tracing the generic Lantikan form action/view.
+- Recorded the global migration standard: migrated write workflows should have dedicated action/view entry points when they have their own fields, rules, or transaction plan.
+- Live PHS submit remains disabled; Yii2 fallback remains available from the form.
+
+Continuation:
+
+- Split Staf Baru into maintainer-friendly `StafBaruFormAction` and `staf-baru-form.php`.
+- `/lantikan/lantik-staf-baru` now routes directly to the Staf Baru action/view pair.
+
+Migration standard update:
+
+- Final migrated forms must use direct normal view markup, not metadata-style field loops.
+- Metadata-style forms are allowed only as temporary scaffolding and must be replaced before a workflow is considered maintainable/migrated.
+- All migrations must be maintainer-friendly: clear route, action, view, explicit fields, and named service rules.
+- Do not use high-level programming style that hides workflow behavior behind generic builders, metadata engines, dynamic callbacks, or clever indirection. Keep migrated code direct and easy for maintainers to trace.
+- Fast migration that lowers maintainability is rejected.
+
+Direct form reconfiguration on 2026-11-28:
+
+- Reconfigured `src/Web/Lantikan/staf-baru-form.php` to direct field calls and removed `$form['fields']`/`$fieldsByName`/section metadata rendering from the view.
+- Reconfigured `src/Web/Lantikan/phs-form.php` to direct field calls and removed `$form['fields']`/`$fieldsByName`/section metadata rendering from the view.
+- `StafBaruFormAction`, `PhsFormAction`, and `SpdpFormAction` remove field metadata before rendering.
+
+### STARS Supervisor Staff Report Cleanup
+
+Recorded on 2026-11-28.
+
+- Started the detailed Attendance Supervisor cleanup after confirming the top menu was local but several row actions still handed off to Yii2.
+- Replaced the `Kehadiran` button in `/kehadiran/senarai_kakitangan` with local Yii3 route `/kehadiran/supervisor-staff-attendance-report?icno=...`.
+- Added `SupervisorStaffAttendanceReportAction` and `supervisor-staff-attendance-report.php` as a dedicated action/view pair, matching the maintainer-friendly migration standard.
+- Added supervisor-scope authorization in `AttendanceService::supervisorStaffAttendanceReport()` before exposing the selected staff attendance report.
+- No live write behavior was added; this is a read-only report migration.
+- Verification: PHP syntax passed for touched STARS files and `config/common/routes.php`; `php yii list` passed.
+
+### STARS Supervisor WFH Schedule Lightweight List
+
+Recorded on 2026-11-28.
+
+- Reworked `/kehadiran/wfh-jadual` so it no longer renders the full monthly WFH grid for all staff on first load.
+- First screen now shows only staff name, grade, department, and a `Tindakan` button.
+- Added staff search, department dropdown filter, and pagination to the first screen.
+- Clicking `Tindakan` opens the full monthly WFH grid for the selected staff only.
+- `AttendanceService::supervisorWfhSchedule()` now avoids the heavy WFH day lookup until a staff ICNO is selected.
+- Verification: PHP syntax passed for `AttendanceService`, `SupervisorAction`, and `supervisor-page.php`; `php yii list` passed; unauthenticated list/detail route smokes returned `302` to login.
+
+### STARS Supervisor WFH Edit Day Cleanup
+
+Recorded on 2026-11-28.
+
+- Replaced the Yii2 `Edit Day` button in `/kehadiran/wfh-by-mth` with local `/kehadiran/wfh-edit-day`.
+- Added `WfhEditDayAction` and direct `wfh-edit-day.php` view for the supervisor day-management workflow.
+- Added explicit service methods for the old add/remove behavior against `attendance.tbl_wfh`, scoped to the supervisor staff list.
+- The local page can add selected staff to one-day approved WFH and remove selected WFH rows to WFO.
+- No live POST/write was executed during verification.
+- Verification: PHP syntax passed for touched files; `php yii list` passed; unauthenticated `/kehadiran/wfh-by-mth` and `/kehadiran/wfh-edit-day?date=2026-11-28` returned `302` to login.
+
+### Lantikan SPDP Migration Start
+
+Recorded on 2026-11-28.
+
+- Started `LANTIKAN-09` SPDP with source mapping in `AI hronline/17_lantikan_spdp_migration_plan.md`.
+- Added `LantikanSpdpService` for SPDP-specific dry-run validation and insert-plan preview.
+- Added SPDP-specific reference options for status `2`/`3` and `hronline.gredjawatan.scheme_type = 'SPDP'`.
+- Added maintainer-friendly direct form files: `SpdpFormAction` and `spdp-form.php`.
+- Enabled `/lantikan/index` SPDP tile and `/lantikan/lantik-spdp` route to open local Yii3 dry-run.
+- Live SPDP submit remains disabled; Yii2 fallback remains available from the form.
+
+### Lantikan Khas Migration Start
+
+Recorded on 2026-11-28.
+
+- Started `LANTIKAN-11` Khas with source mapping in `AI hronline/18_lantikan_khas_migration_plan.md`.
+- Added `LantikanKhasService` for Khas-specific dry-run validation and insert-plan preview.
+- Added Khas-specific reference options for status `2` and `hronline.gredjawatan.isKhas = 1`.
+- Added maintainer-friendly direct form files: `KhasFormAction` and `khas-form.php`.
+- Enabled `/lantikan/index` Khas tile and `/lantikan/lantik-khas` route to open local Yii3 dry-run.
+- Removed the generic Lantikan `FormAction.php` and `form.php`; Staf Baru, PHS, Khas, and SPDP now all use dedicated action/view pairs.
+- Live Khas submit remains disabled; Yii2 fallback remains available from the form.
+
+### Cuti Direct Form Standard
+
+Recorded on 2026-11-28.
+
+- Reconfigured Cuti staff application routes to follow the maintainer-friendly migration standard.
+- Replaced shared `Cuti\Individu\FormAction` routing with dedicated action classes for `ck`, `cb`, `cr1`, `cr1-aca`, `cr2`, `ctr`, `cs1`, `cs2`, and `hso`.
+- Added dedicated direct views for each leave type and removed the shared conditional `src/Web/Cuti/Individu/form.php`.
+- Kept `CutiApplicationService` as the existing live submit/validation/upload service for this pass so the UI/action cleanup does not change database write behavior.
+- Verification: PHP syntax passed for all Cuti Individu PHP files, `config/common/routes.php`, and `src/Shared/CutiApplicationService.php`; `php yii list` passed.
+- No live Cuti POST was executed in this pass.
+
+### Migration Standard Revisit Audit
+
+Recorded on 2026-11-28.
+
+- Added `AI hronline/19_migration_standard_revisit_audit.md` as the standing cleanup register for older migrated modules that predate the maintainer-friendly standard.
+- Confirmed Lantikan Staf Baru/PHS/Khas/SPDP and Cuti staff leave application forms now pass the new action/view/direct-form standard.
+- Recorded Biodata main/section forms as out of standard because they still use `$form['fields']` loops and service field metadata.
+- Recorded Gambar Profile upload forms as out of standard because they still render upload inputs from `$form['fields']`.
+- Recorded Kehadiran/STARS write routing as out of standard where one `WriteAction` hides several write workflows behind route slugs.
+- Recorded Cuti read/admin/officer multiplexer actions and shared `CutiApplicationService` as partial/temporary debt, with live-write caution for future cleanup.
+- Revisit rule: any touched write workflow must be brought to dedicated, direct, maintainer-friendly structure before the revisit is considered complete.
+- Standard wording clarified: do not over-engineer simple migrated workflows or introduce custom mini-framework style abstractions. Normal explicit Yii3/PHP action, view, and service code is preferred.
+
+### STARS Supervisor Staff WBB Cleanup
+
+Recorded on 2026-11-28.
+
+- Removed the Yii2 row buttons from `/kehadiran/staff-wbb`.
+- Added local direct actions/views for:
+  - `/kehadiran/wbb-list`
+  - `/kehadiran/del-wbb`
+  - `/kehadiran/set-peg`
+- WBB add/edit/delete now lives in named Yii3 code and writes `attendance.tbl_wp`.
+- Peraku/Lulus officer setup now lives in named Yii3 code and writes `hrm.cuti_set_pegawai`.
+- Verified PHP syntax for touched STARS action/view files, `AttendanceService`, `supervisor-page.php`, and routes; `php yii list` passed.
+- Smoke checked unauthenticated GET routes redirect to login. No live WBB/Peraku POST write was executed.
+- Follow-up UI correction: `wbb-list.php` and `set-peg.php` now use the migrated record-form standard with `profile-card-header`, `record-form`, `record-form-grid`, `grid-field`, searchable selects, centered actions, and proper table delete button styling.
 
 ### Pengesahan Data Staf Role/Permission Parity
 

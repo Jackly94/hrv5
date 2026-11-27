@@ -22,10 +22,10 @@ Purpose: quick continuation record for the Lantikan module. Use this to decide t
 | Workflow / Type | Old Yii2 route | Current Yii3 route/status | Migration status | Notes / next task |
 | --- | --- | --- | --- | --- |
 | Lantikan dashboard | `lantikan/index` | `/lantikan/index` | Migrated | Local Yii3 landing page is the default from menu. |
-| Staf Baru | `lantikan/lantik-staf-baru` | `/lantikan/lantik-staf-baru` plus `/lantikan/lantik-staf-baru/result` | Partial | Yii3 form, validation, AD email find check, insert-plan dry-run, feature-flagged transaction service, UMSPER advisory lock implementation, and reconciliation page exist. Live submit remains off by default and still needs AD-enabled dummy/UAT write verification before cutover. |
-| PHS | `lantikan/lantik-phs` | User-facing tile opens live Yii2. Local generic dry-run route exists if opened directly. | Legacy / Partial scaffold | Needs full Yii2 source mapping and transaction service after Staf Baru pattern is proven. Main task: `LANTIKAN-10`. |
-| Khas | `lantikan/lantik-khas` | User-facing tile opens live Yii2. Local generic dry-run route exists if opened directly. | Legacy / Partial scaffold | Needs full Yii2 source mapping and transaction service. Main task: `LANTIKAN-11`. |
-| SPDP | `lantikan/lantik-spdp` | User-facing tile opens live Yii2. Local generic dry-run route exists if opened directly. | Legacy / Partial scaffold | Needs SPDP-specific defaults/fields and transaction service. Main task: `LANTIKAN-09`. |
+| Staf Baru | `lantikan/lantik-staf-baru` | User-facing tile opens local `/lantikan/lantik-staf-baru` via `StafBaruFormAction` and direct `staf-baru-form.php`; `/lantikan/lantik-staf-baru/result` remains local. Yii2 fallback remains available from the form. | Partial | Yii3 direct form, validation, AD email find check, insert-plan dry-run, feature-flagged transaction service, UMSPER advisory lock implementation, and reconciliation page exist. Live submit remains off by default and still needs AD-enabled dummy/UAT write, rollback, and concurrency verification before cutover. |
+| PHS | `lantikan/lantik-phs` | User-facing tile opens local `/lantikan/lantik-phs` via `PhsFormAction` and direct `phs-form.php`. Yii2 fallback remains available from the form. | Partial scaffold | Yii3 direct form and dry-run now model `umsperpks`, `(S)` staff number, status 6/7 restriction, and side-effect boundaries. Live transaction still pending. Main task: `LANTIKAN-10`; details in `AI hronline/16_lantikan_phs_migration_plan.md`. |
+| Khas | `lantikan/lantik-khas` | User-facing tile opens local `/lantikan/lantik-khas` via `KhasFormAction` and direct `khas-form.php`. Yii2 fallback remains available from the form. | Partial scaffold | Yii3 direct form and dry-run now model `umsperpks`, `(S)` staff number, status `2` restriction, `isKhas = 1` grades, `ServTypeCd = SSM`, and side-effect boundaries. Live transaction still pending. Main task: `LANTIKAN-11`; details in `AI hronline/18_lantikan_khas_migration_plan.md`. |
+| SPDP | `lantikan/lantik-spdp` | User-facing tile opens local `/lantikan/lantik-spdp` via `SpdpFormAction` and direct `spdp-form.php`. Yii2 fallback remains available from the form. | Partial scaffold | Yii3 dry-run now models SPDP status 2/3 restriction, `scheme_type = 'SPDP'` grades, `hronline.umsper`, `ServTypeCd = SPDP`, and side-effect boundaries. Live transaction still pending. Main task: `LANTIKAN-09`; details in `AI hronline/17_lantikan_spdp_migration_plan.md`. |
 | Staf UMS search | `lantikan/lssu-index` | `/lantikan/lssu-index` | Migrated read-only | Search/list is local Yii3. The actual reappointment write still links to live Yii2. |
 | Staf UMS reappointment write | `lantikan/lantik-semula-staf-ums?id=...` | Live Yii2 link from search rows | Legacy | Main task: `LANTIKAN-12`. |
 | Lantikan Belum Selesai | `lantikan/lantikan-belum-selesai` | `/lantikan/lantikan-belum-selesai` | Migrated read-only | Local Yii3 list reads `hronline.tbl_lantikan_belum_selesai`. |
@@ -40,18 +40,21 @@ Purpose: quick continuation record for the Lantikan module. Use this to decide t
 | Penerbit UMS | `lantikan/penerbitums` | Live Yii2 redirect | Legacy | Not shown as active tile in current Yii3 dashboard. Main task: `LANTIKAN-15`. |
 | EJOBS | `lantikan/lantikan-ejobs` | Live Yii2 redirect | Legacy | Hard-coded/exception access in old Yii2 must be reviewed before migration. Main task: `LANTIKAN-15`. |
 | Rollback Lantikan | `lantikan/rollback-lantikan` | Not exposed in Yii3 | Not migrated intentionally | Do not migrate without separate security review. |
-| AD email validation | AD `find` API | `ActiveDirectoryApiClient::find()` used by Staf Baru validation/dry-run when enabled | Partial | Create/update is not enabled for live appointment flow. |
-| AD create user | AD `createUser` API | Adapter method exists, no post-commit production workflow yet | Not enabled | Continue `LANTIKAN-16` and `STAFBARU-08`. |
+| AD email validation | AD `find` API | `ActiveDirectoryApiClient::find()` used by Staf Baru validation/dry-run and immediate email check when enabled | Partial | Full AD adapter status is tracked in `AI hronline/15_active_directory_migration_plan.md`. |
+| AD create user | AD `createUser` API | Adapter method exists, no post-commit production workflow yet | Not enabled | Continue `AI hronline/15_active_directory_migration_plan.md`, `LANTIKAN-16`, and `STAFBARU-08`. |
 
 ## Recommended Next Order
 
 - Detailed continuation plan: `AI hronline/10_lantikan_pending_migration_execution_plan.md`.
+- AD adapter continuation plan: `AI hronline/15_active_directory_migration_plan.md`.
+- SPDP continuation plan: `AI hronline/17_lantikan_spdp_migration_plan.md`.
+- Khas continuation plan: `AI hronline/18_lantikan_khas_migration_plan.md`.
 - Open blocker register: `AI hronline/10_lantikan_pending_migration_execution_plan.md#blocker-register`.
-- [ ] Verify Staf Baru live core transaction with approved dummy/UAT data: `STAFBARU-06`.
-- [ ] Verify UMSPER advisory lock under live/concurrency test: `STAFBARU-07`.
+- [ ] Verify existing Staf Baru live core transaction with approved dummy/UAT data: `STAFBARU-06`.
+- [ ] Verify existing UMSPER advisory lock under live/concurrency test: `STAFBARU-07`.
 - [ ] Add AD create post-commit handling: `STAFBARU-08`.
 - [ ] Resolve IdP and cross-module side effects: `STAFBARU-09` and `STAFBARU-10`.
-- [ ] Enable Staf Baru submit behind feature flag: `STAFBARU-11`.
+- [ ] Use feature-flagged Staf Baru submit in controlled UAT and record outcome: `STAFBARU-11`.
 - [ ] After Staf Baru UAT, port SPDP, PHS, and Khas using the same transaction pattern.
 
 ## Guardrails
@@ -59,3 +62,6 @@ Purpose: quick continuation record for the Lantikan module. Use this to decide t
 - Do not enable writes to `attendance.tbl_wp`, `keselamatan.tbl_staff_keselamatan`, or `hrm.myhealth_tblmaxtuntutan` until the owner modules agree.
 - Do not call AD create/update inside an open DB transaction.
 - Keep Yii2 fallback links visible until the matching Yii3 live submit path has passed UAT.
+- Prefer dedicated action and view files for each migrated Lantikan write workflow so maintainers can find UI changes without tracing generic flow detection.
+- Final migrated forms must be direct normal view markup, not metadata-style field loops. Generic metadata forms are temporary scaffolds only.
+- Any migration that is fast but leaves low maintainability is rejected.

@@ -11,16 +11,16 @@ Already migrated into Yii3:
 - `/lantikan/index` dashboard.
 - `/lantikan/lssu-index` Staf UMS search, read-only.
 - `/lantikan/lantikan-belum-selesai`, `/lantikan/view-utama`, and `/lantikan/view-lantikan` verification pages, read-only.
-- `/lantikan/lantik-staf-baru` Staf Baru form blueprint, validation, optional AD email `find`, and dry-run insert plan.
+- `/lantikan/lantik-staf-baru` Staf Baru form blueprint, validation, optional AD email `find`, dry-run insert plan, feature-gated core transaction service, advisory-lock UMSPER reservation, and reconciliation page.
 - `ActiveDirectoryApiClient` scaffold, disabled by default unless env credentials are present.
 
 Still pending:
 
-- Staf Baru live submit: core `hronline.*` insert transaction is not implemented.
-- UMSPER reservation guard: current preview still uses `latest COOldIDNo + 1` without a live advisory lock.
+- Staf Baru live submit: core `hronline.*` insert transaction is implemented behind `HRONLINE_LANTIKAN_STAF_BARU_WRITE=1`, but is not UAT-verified.
+- UMSPER reservation guard: live submit implementation uses an advisory lock; dry-run preview still uses `latest COOldIDNo + 1` for non-writing preview.
 - AD create / IdP Mata post-commit workflow: adapter exists, orchestration and failure recording do not.
 - STARS/security/medical side effects: `attendance.tbl_wp`, `keselamatan.tbl_staff_keselamatan`, and `hrm.myhealth_tblmaxtuntutan` are intentionally blocked.
-- PHS, Khas, and SPDP: only generic/dry-run scaffolding exists; user-facing dashboard tiles still hand off to Yii2.
+- PHS, Khas, and SPDP: dedicated direct Yii3 dry-run forms and insert-plan services exist; live transaction services remain pending.
 - Staf UMS reappointment write, salary/LPG workflow, and optional tiles are still legacy Yii2.
 
 ## Migration Standard To Follow
@@ -36,15 +36,21 @@ Lantikan write migration must follow the Yii3 standards already used by Rekod Pe
 - Feature flags must default to off for live appointment submit and post-commit integrations.
 - Legacy Yii2 handoff links stay visible until the matching Yii3 workflow passes UAT.
 - Do not write STARS/Cuti-owned side-effect tables until owner approval is recorded.
+- Each migrated write workflow should have a maintainer-friendly action and view named for that workflow. Avoid hiding active workflows behind generic route detection once the workflow has its own rules, fields, or transaction plan.
+- Shared services may still own validation, transaction planning, and common helper behavior, but page maintainers should be able to locate a workflow's UI entry point from `src/Web/<Module>/<Workflow>Action.php` and its matching view.
+- Final migrated forms must use direct, normal form markup in the workflow view. Do not use metadata-driven field loops such as `$form['fields']`, `$renderField($field)`, or generic field-type renderers as the final implementation.
+- Metadata-style forms are allowed only as temporary migration scaffolding while source behavior is being discovered. They must be replaced before a workflow is considered maintainable/migrated.
+- All migration work must be maintainer-friendly by default: clear route, clear action, clear view, explicit fields, and business rules in named services.
+- Fast migration that lowers maintainability is rejected. Shipping quickly is not an acceptable tradeoff if the next maintainer must trace generic metadata, hidden flow detection, or shared templates to understand one workflow.
 
 ## Priority Order
 
-1. Finish Staf Baru core write engine while keeping the UI in dry-run mode.
-2. Add UMSPER advisory lock around live reservation.
+1. Verify Staf Baru core write engine with approved dummy/UAT data while keeping the feature flag off by default.
+2. Verify UMSPER advisory lock behavior with a live/concurrency test.
 3. Add post-commit result handling for AD create, IdP Mata, notifications, and allocation-profile handoff.
 4. Complete the STARS/security/medical coordination checkpoint.
-5. Enable Staf Baru submit behind `HRONLINE_LANTIKAN_STAF_BARU_WRITE=1`.
-6. Add a reconciliation page after successful create.
+5. Use `HRONLINE_LANTIKAN_STAF_BARU_WRITE=1` only for controlled UAT submit.
+6. Keep the reconciliation page current with verified table rules.
 7. After UAT, migrate SPDP, PHS, and Khas using the shared transaction engine.
 8. Then migrate Staf UMS reappointment writes, salary/LPG, and optional appointment tiles.
 
@@ -65,10 +71,11 @@ Run these tasks one at a time. Mark a box only after implementation, verificatio
   - Goal: protect `hronline.umsper.COOldIDNo` reservation from concurrent duplicates.
   - Acceptance: live submit recomputes UMSPER under `GET_LOCK`; lock timeout returns a clean error and no partial rows.
   - 2026-11-20: Advisory lock implementation added in transaction service; unchecked until live/concurrency verification is run.
+  - 2026-11-27: Live validation path no longer builds an insert plan before acquiring the advisory lock; live UMSPER generation remains inside the locked transaction.
 - [x] `LANTIKAN-W04` - Add feature flag plumbing without enabling writes by default.
   - Goal: introduce `HRONLINE_LANTIKAN_STAF_BARU_WRITE=1` as the only way to expose live submit.
   - Acceptance: flag off keeps current dry-run behavior and Yii2 fallback; unauthorized POST stays blocked.
-- [ ] `LANTIKAN-W05` - Wire feature-gated live submit into `FormAction`.
+- [ ] `LANTIKAN-W05` - Wire feature-gated live submit into the dedicated Staf Baru action.
   - Goal: let authorized HR users submit Staf Baru through Yii3 only when the flag is on.
   - Acceptance: validation errors render with no writes; successful submit returns a created `ICNO`/`COOldID`.
   - 2026-11-20: FormAction wiring added; unchecked until authenticated feature-flagged POST is tested.
@@ -78,6 +85,7 @@ Run these tasks one at a time. Mark a box only after implementation, verificatio
 - [x] `LANTIKAN-W06` - Add Staf Baru reconciliation page.
   - Goal: show table-by-table creation status after live submit.
   - Acceptance: page checks all core tables, shows skipped side effects, and links to legacy allocation profile.
+  - 2026-11-27: Probation-period table is shown as not applicable when `statLantikan != 1`.
 - [ ] `LANTIKAN-W07` - Add post-commit notification handling.
   - Goal: move IT/admin notification creation after the core appointment commit.
   - Acceptance: notifications are not written if the core transaction fails.
@@ -183,11 +191,12 @@ Task ids: `STAFBARU-06`, preparation for `STAFBARU-07`.
 
 Target files:
 
-- Add `src/Shared/LantikanStafBaruTransactionService.php` or extend `LantikanStafBaruService` only if the class stays readable.
-- Update `src/Shared/LantikanService.php` to expose a live-submit method, but keep it feature-gated.
-- Update `src/Web/Lantikan/FormAction.php` only after the service is ready.
+- `src/Shared/LantikanStafBaruTransactionService.php`
+- `src/Shared/LantikanStafBaruService.php`
+- `src/Shared/LantikanService.php`
+- `src/Web/Lantikan/StafBaruFormAction.php`
 
-Implementation plan:
+Implemented foundation:
 
 - Reuse `LantikanStafBaruService::dryRun()` validation and insert-plan logic as the source of truth.
 - Convert the insert plan into executable insert rows for:
@@ -210,7 +219,7 @@ Implementation plan:
   - `hronline.tblrscofileno`
 - Include legacy default values already captured in the plan, including `COOPass`, `Status`, `DeptId_hakiki`, `campus_id_hakiki`, `gredJawatan_2`, `date_update`, placement letter defaults, and VC authority lookup.
 - Add audit/stat/touch behavior for `hronline.tblprcobiodata` if accepted by the Lantikan owner. If the legacy flow did not create `tbl_stat`, record that decision explicitly before adding new approval semantics.
-- Return a typed result array containing:
+- Return a result array containing:
   - `success`
   - `values`
   - `errors`
@@ -226,11 +235,16 @@ Acceptance checks:
 - No AD, IdP, notification, allocation, `attendance`, `keselamatan`, or `hrm.myhealth` write runs inside the transaction.
 - PHP syntax passes for all touched files.
 
+Current continuation:
+
+- The service and form wiring exist behind `HRONLINE_LANTIKAN_STAF_BARU_WRITE=1`.
+- Keep `STAFBARU-06` unchecked until the forced-failure rollback and successful approved dummy/UAT insert are verified.
+
 ## Phase 2: UMSPER Reservation Guard
 
 Task id: `STAFBARU-07`.
 
-Implementation plan:
+Implemented foundation:
 
 - Acquire MySQL advisory lock before reading latest `hronline.umsper.COOldIDNo`:
   - `SELECT GET_LOCK('hronline.umsper.reserve', 10)`
@@ -244,6 +258,11 @@ Acceptance checks:
 - Lock timeout creates no partial appointment.
 - Two parallel live-submit attempts cannot receive the same `COOldIDNo`.
 - Dry-run may keep preview behavior, but live submit must recompute the UMSPER under lock.
+
+Current continuation:
+
+- Live submit now skips insert-plan generation during pre-lock validation and recomputes the UMSPER inside the locked transaction.
+- Keep `STAFBARU-07` unchecked until lock timeout and parallel live-submit behavior are verified with approved UAT data.
 
 ## Phase 3: Post-Commit Workflow
 
@@ -357,10 +376,9 @@ Minimum checks for each implementation slice:
 
 ## Immediate Next Patch
 
-The next code patch should implement only Phase 1 and Phase 2 service internals:
+The next code patch should focus on post-commit status handling, not the already implemented core transaction service:
 
-- Add the core transaction service.
-- Add advisory-lock protected UMSPER generation for live submit.
-- Keep `FormAction` in dry-run mode unless the feature flag and UI behavior are included in the same reviewed slice.
-- Do not enable AD create, IdP, STARS, security, medical, or allocation-profile writes in that patch.
+- Add a durable place to record post-commit outcomes or follow-up tasks for AD create, IdP Mata, and notifications.
+- Keep AD create, IdP Mata, STARS, security, medical, and allocation-profile replacement disabled unless each owner decision and retry/audit behavior is recorded.
+- Keep `HRONLINE_LANTIKAN_STAF_BARU_WRITE=1` limited to controlled UAT until `STAFBARU-06` and `STAFBARU-07` are verified.
 

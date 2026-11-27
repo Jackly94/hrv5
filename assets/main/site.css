@@ -1561,6 +1561,39 @@ textarea[readonly]::placeholder {
     padding: 0.58rem 0.8rem;
 }
 
+.grid-field-action-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.6rem;
+    align-items: stretch;
+}
+
+.grid-field-action-row .button-link {
+    min-height: 2.75rem;
+    padding-inline: 0.8rem;
+    white-space: nowrap;
+}
+
+.field-check-message {
+    min-height: 1.2rem;
+    margin: 0;
+    color: #64748b;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.field-check-message-success {
+    color: #047857;
+}
+
+.field-check-message-warning {
+    color: #b45309;
+}
+
+.field-check-message-danger {
+    color: #b91c1c;
+}
+
 .grid-field .checkbox-field {
     display: inline-flex;
     align-items: center;
@@ -3726,6 +3759,15 @@ body > .searchable-select-dropdown .active {
 }
 
 @media (max-width: 560px) {
+    .grid-field-action-row {
+        grid-template-columns: 1fr;
+    }
+
+    .grid-field-action-row .button-link {
+        justify-content: center;
+        width: 100%;
+    }
+
     .app-toast-region {
         top: 0.75rem;
         width: calc(100vw - 1.5rem);

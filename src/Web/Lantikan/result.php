@@ -43,7 +43,7 @@ $this->setTitle('Semakan Lantik Staf Baru');
                         <?php foreach ($checks as $check): ?>
                             <tr>
                                 <td><?= Html::encode((string) ($check['table'] ?? '-')) ?></td>
-                                <td><?= ($check['exists'] ?? false) ? 'Wujud' : 'Belum wujud / tidak berkaitan' ?></td>
+                                <td><?= ($check['required'] ?? true) ? (($check['exists'] ?? false) ? 'Wujud' : 'Belum wujud') : 'Tidak berkaitan' ?></td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>

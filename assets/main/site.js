@@ -133,6 +133,136 @@ document.querySelectorAll('[data-gcr-input]').forEach((gcrInput) => {
     updateGcrTotals();
 });
 
+const suggestLantikanEmail = (name) => {
+    const parts = name
+        .toLowerCase()
+        .replace(/[^a-zA-Z\s]/g, ' ')
+        .trim()
+        .split(/\s+/)
+        .filter((part) => part && !['bin', 'binti', 'bte', 'anak'].includes(part));
+
+    if (parts.length === 0) {
+        return '';
+    }
+
+    if (parts.length >= 4) {
+        return `${parts[0]}.${parts[1]}@ums.edu.my`;
+    }
+
+    if (parts.length === 3) {
+        return `${parts[0]}${parts[1]}.${parts[2]}@ums.edu.my`;
+    }
+
+    if (parts.length === 2) {
+        return `${parts[0]}.${parts[1]}@ums.edu.my`;
+    }
+
+    return `${parts[0]}@ums.edu.my`;
+};
+
+document.querySelectorAll('[data-lantikan-name-suggestion-source]').forEach((nameInput) => {
+    const form = nameInput.closest('form');
+    const emailInput = form?.querySelector('[data-lantikan-email-suggestion-target]');
+    if (!(nameInput instanceof HTMLInputElement) || !(emailInput instanceof HTMLInputElement)) {
+        return;
+    }
+
+    let suggestionTimer = null;
+    const applySuggestion = () => {
+        const suggestion = suggestLantikanEmail(nameInput.value);
+        if (!suggestion) {
+            return;
+        }
+
+        const previousSuggestion = emailInput.dataset.lantikanAutoEmail || '';
+        if (emailInput.value.trim() !== '' && emailInput.value.trim() !== previousSuggestion) {
+            return;
+        }
+
+        emailInput.value = suggestion;
+        emailInput.dataset.lantikanAutoEmail = suggestion;
+        emailInput.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    const queueSuggestion = () => {
+        if (suggestionTimer !== null) {
+            window.clearTimeout(suggestionTimer);
+        }
+
+        suggestionTimer = window.setTimeout(applySuggestion, 500);
+    };
+
+    nameInput.addEventListener('input', queueSuggestion);
+    nameInput.addEventListener('blur', applySuggestion);
+});
+
+document.querySelectorAll('[data-lantikan-email-check]').forEach((emailInput) => {
+    if (!(emailInput instanceof HTMLInputElement)) {
+        return;
+    }
+
+    const message = emailInput.closest('.grid-field')?.querySelector('[data-lantikan-email-check-message]');
+    if (!(message instanceof HTMLElement)) {
+        return;
+    }
+
+    let checkTimer = null;
+    let requestSequence = 0;
+    const setMessage = (text, tone = 'neutral') => {
+        message.textContent = text;
+        message.hidden = text === '';
+        message.classList.remove('field-check-message-success', 'field-check-message-warning', 'field-check-message-danger');
+        if (['success', 'warning', 'danger'].includes(tone)) {
+            message.classList.add(`field-check-message-${tone}`);
+        }
+    };
+
+    const runCheck = async () => {
+        const email = emailInput.value.trim();
+        const endpoint = emailInput.dataset.lantikanEmailCheck || '';
+        if (!email || !endpoint) {
+            setMessage('');
+            return;
+        }
+
+        const sequence = ++requestSequence;
+        setMessage('Semak emel...', 'neutral');
+
+        try {
+            const url = new URL(endpoint, window.location.origin);
+            url.searchParams.set('email', email);
+            const response = await fetch(url.toString(), {
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+            });
+            const result = await response.json();
+            if (sequence !== requestSequence) {
+                return;
+            }
+
+            setMessage(String(result.message || ''), String(result.tone || 'neutral'));
+        } catch (error) {
+            if (sequence === requestSequence) {
+                setMessage('Semakan emel tidak berjaya. Sila cuba lagi.', 'danger');
+            }
+        }
+    };
+
+    const queueCheck = () => {
+        if (checkTimer !== null) {
+            window.clearTimeout(checkTimer);
+        }
+
+        checkTimer = window.setTimeout(runCheck, 650);
+    };
+
+    emailInput.addEventListener('input', queueCheck);
+    emailInput.addEventListener('blur', runCheck);
+    if (emailInput.value.trim() !== '') {
+        queueCheck();
+    }
+});
+
 document.querySelectorAll('[data-confirm-submit]').forEach((form) => {
     form.addEventListener('submit', (event) => {
         const message = form.getAttribute('data-confirm-submit') || 'Teruskan?';

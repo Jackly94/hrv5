@@ -253,7 +253,7 @@ Recommended Yii3 structure:
   - later Staf UMS search/reappointment logic
 - `src/Web/Lantikan/IndexAction.php`
 - `src/Web/Lantikan/template.php`
-- Later: `src/Web/Lantikan/FormAction.php`, `src/Web/Lantikan/form.php`
+- Dedicated workflow actions/views, for example `StafBaruFormAction.php` with `staf-baru-form.php`, `PhsFormAction.php` with `phs-form.php`, `KhasFormAction.php` with `khas-form.php`, and `SpdpFormAction.php` with `spdp-form.php`.
 
 Keep non-migrated write actions as legacy links until each write path has a reviewed Yii3 service.
 
@@ -275,7 +275,7 @@ Quick status matrix:
 - [ ] `LANTIKAN-08` - Enable Staf Baru Yii3 submit.
 - [ ] `LANTIKAN-09` - Port SPDP appointment flow.
 - [ ] `LANTIKAN-10` - Port PHS appointment flow.
-- [ ] `LANTIKAN-11` - Port Khas appointment flow.
+- [x] `LANTIKAN-11` - Port Khas appointment flow into Yii3 dry-run with dedicated direct form; live submit remains pending.
 - [ ] `LANTIKAN-12` - Port Staf UMS reappointment write flow.
 - [x] `LANTIKAN-13` - Incomplete appointment verification pages.
 - [ ] `LANTIKAN-14` - Salary profile and LPG workflow.

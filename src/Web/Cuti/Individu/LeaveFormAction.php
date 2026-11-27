@@ -14,15 +14,17 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UploadedFileInterface;
 use Yiisoft\Yii\View\Renderer\WebViewRenderer;
 
-final readonly class FormAction
+abstract class LeaveFormAction
 {
     public function __construct(
-        private WebViewRenderer $viewRenderer,
-        private ResponseFactoryInterface $responseFactory,
-        private LegacySessionReader $sessionReader,
-        private EmployeeRepository $employees,
-        private CutiMenuService $menu,
-        private CutiApplicationService $applications,
+        private readonly string $key,
+        private readonly string $view,
+        private readonly WebViewRenderer $viewRenderer,
+        private readonly ResponseFactoryInterface $responseFactory,
+        private readonly LegacySessionReader $sessionReader,
+        private readonly EmployeeRepository $employees,
+        private readonly CutiMenuService $menu,
+        private readonly CutiApplicationService $applications,
     ) {}
 
     public function __invoke(ServerRequestInterface $request): ResponseInterface
@@ -33,7 +35,7 @@ final readonly class FormAction
         }
 
         $icno = $this->employees->icnoFromIdentity($legacySession['identityId']);
-        $path = $request->getUri()->getPath();
+        $path = '/cuti/individu/' . $this->key;
         $query = $request->getQueryParams();
 
         if (strtoupper($request->getMethod()) === 'POST') {
@@ -74,7 +76,7 @@ final readonly class FormAction
      */
     private function render(string $icno, array $data): ResponseInterface
     {
-        return $this->viewRenderer->render(__DIR__ . '/form', [
+        return $this->viewRenderer->render(__DIR__ . '/' . $this->view, [
             ...$data,
             'menuSections' => $this->menu->sectionsForStaff($icno),
         ]);

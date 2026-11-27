@@ -79,6 +79,7 @@ final readonly class SupervisorAction
             'deptId' => $departmentId,
             'grade' => $this->stringQuery($query, 'grade'),
         ];
+        $wfhScheduleStaffIcno = $this->stringQuery($query, 'icno');
         $wfhFilters = [
             'q' => $this->stringQuery($query, 'q'),
             'status' => $this->stringQuery($query, 'status'),
@@ -137,7 +138,7 @@ final readonly class SupervisorAction
                 ? $this->attendanceService->supervisorWfhByMonth($icno, $month, $year, $departmentId)
                 : null,
             'wfhSchedule' => $slug === 'wfh-jadual'
-                ? $this->attendanceService->supervisorWfhSchedule($icno, $month, $year, $departmentId)
+                ? $this->attendanceService->supervisorWfhSchedule($icno, $month, $year, $staffFilters, $wfhScheduleStaffIcno)
                 : null,
             'wfhApplications' => $slug === 'pantau-permohonan-wfh'
                 ? $this->attendanceService->supervisorWfhApplications($icno, $wfhFilters)

@@ -4,9 +4,30 @@ declare(strict_types=1);
 
 namespace App\Shared;
 
+use Yiisoft\Db\Connection\ConnectionInterface;
+
 final readonly class ActiveDirectoryApiClient
 {
     private const BASE_URL = 'https://api.ums.edu.my';
+
+    public function __construct(
+        private ConnectionInterface $db,
+    ) {}
+
+    /**
+     * @return array{enabled: bool, success: bool, message: string, data: array<string, mixed>|null}
+     */
+    public function login(string $username, string $password): array
+    {
+        if (!$this->enabled()) {
+            return $this->disabledResult();
+        }
+
+        return $this->post('/api/v2/basic/ad/login', [
+            'txtUserId' => $username,
+            'txtUserPassword' => $password,
+        ]);
+    }
 
     /**
      * @return array{enabled: bool, success: bool, message: string, data: array<string, mixed>|null}
@@ -24,7 +45,7 @@ final readonly class ActiveDirectoryApiClient
     }
 
     /**
-     * @param array<string, string> $staff
+     * @param array<string, string|bool> $staff
      * @return array{enabled: bool, success: bool, message: string, data: array<string, mixed>|null}
      */
     public function createUser(array $staff): array
@@ -37,7 +58,24 @@ final readonly class ActiveDirectoryApiClient
     }
 
     /**
-     * @param array<string, string> $staff
+     * @return array{enabled: bool, success: bool, message: string, data: array<string, mixed>|null}
+     */
+    public function createUserForIcno(string $icno): array
+    {
+        if (!$this->enabled()) {
+            return $this->disabledResult();
+        }
+
+        $payload = $this->staffPayload($icno, true);
+        if ($payload === null) {
+            return $this->failure('Staff biodata not found for AD create.');
+        }
+
+        return $this->createUser($payload);
+    }
+
+    /**
+     * @param array<string, string|bool> $staff
      * @return array{enabled: bool, success: bool, message: string, data: array<string, mixed>|null}
      */
     public function updateUser(string $userId, array $staff): array
@@ -47,6 +85,23 @@ final readonly class ActiveDirectoryApiClient
         }
 
         return $this->post('/api/v1/ad/updateUser/' . rawurlencode($userId), $staff);
+    }
+
+    /**
+     * @return array{enabled: bool, success: bool, message: string, data: array<string, mixed>|null}
+     */
+    public function updateUserForIcno(string $userId, string $icno): array
+    {
+        if (!$this->enabled()) {
+            return $this->disabledResult();
+        }
+
+        $payload = $this->staffPayload($icno, false);
+        if ($payload === null) {
+            return $this->failure('Staff biodata not found for AD update.');
+        }
+
+        return $this->updateUser($userId, $payload);
     }
 
     public function enabled(): bool
@@ -76,7 +131,9 @@ final readonly class ActiveDirectoryApiClient
             ],
         ]);
 
-        $response = @file_get_contents(self::BASE_URL . $path, false, $context);
+        $response = @file_get_contents($this->baseUrl() . $path, false, $context);
+        $headers = $http_response_header ?? [];
+        $httpStatus = $this->httpStatus($headers);
         if ($response === false) {
             return [
                 'enabled' => true,
@@ -88,14 +145,59 @@ final readonly class ActiveDirectoryApiClient
 
         $decoded = json_decode($response, true);
         $data = is_array($decoded) ? $decoded : ['raw' => $response];
-        $success = $this->success($data);
+        $success = ($httpStatus === 0 || ($httpStatus >= 200 && $httpStatus < 300)) && $this->success($data);
 
         return [
             'enabled' => true,
             'success' => $success,
-            'message' => $this->message($data, $success),
-            'data' => $data,
+            'message' => $this->message($data, $success, $httpStatus),
+            'data' => $data + ['httpStatus' => $httpStatus],
         ];
+    }
+
+    /**
+     * @return array<string, string|bool>|null
+     */
+    private function staffPayload(string $icno, bool $includeAdUserId): ?array
+    {
+        $row = $this->db->createCommand(
+            <<<'SQL'
+            SELECT bio.ICNO, bio.COEmail, bio.CONm, bio.COOldID, bio.COOffTelNo, bio.COHPhoneNo,
+                   dept.shortname AS dept_code, dept.fullname AS department_name,
+                   title.Title AS title_name, campus.campus_name
+            FROM hronline.tblprcobiodata bio
+            LEFT JOIN hronline.department dept ON dept.id = bio.DeptId
+            LEFT JOIN hronline.title title ON title.TitleCd = bio.TitleCd
+            LEFT JOIN hronline.campus campus ON campus.campus_id = bio.campus_id
+            WHERE bio.ICNO = :icno
+            LIMIT 1
+            SQL,
+            [':icno' => $icno],
+        )->queryOne();
+
+        if (!is_array($row)) {
+            return null;
+        }
+
+        $payload = [
+            'ic_no' => $this->stringValue($row['ICNO'] ?? null),
+            'email' => $this->stringValue($row['COEmail'] ?? null),
+            'name' => $this->stringValue($row['CONm'] ?? null),
+            'dept_code' => $this->stringValue($row['dept_code'] ?? null),
+            'department' => $this->stringValue($row['department_name'] ?? null),
+            'staff_no' => $this->stringValue($row['COOldID'] ?? null),
+            'office_phone_no' => $this->stringValue($row['COOffTelNo'] ?? null),
+            'handphone_no' => $this->stringValue($row['COHPhoneNo'] ?? null),
+            'title' => $this->stringValue($row['title_name'] ?? null),
+            'city' => $this->stringValue($row['campus_name'] ?? null),
+            'is_active' => true,
+        ];
+
+        if ($includeAdUserId) {
+            $payload['ad_userid'] = $this->emailLocalPart($payload['email']);
+        }
+
+        return $payload;
     }
 
     /**
@@ -127,13 +229,23 @@ final readonly class ActiveDirectoryApiClient
             return false;
         }
 
-        return !isset($data['errors']);
+        if (array_key_exists('errors', $data)) {
+            $errors = $data['errors'];
+
+            if (is_array($errors)) {
+                return $errors === [];
+            }
+
+            return $errors === null || $errors === '';
+        }
+
+        return true;
     }
 
     /**
      * @param array<string, mixed> $data
      */
-    private function message(array $data, bool $success): string
+    private function message(array $data, bool $success, int $httpStatus): string
     {
         foreach (['message', 'status'] as $key) {
             if (isset($data[$key]) && is_scalar($data[$key])) {
@@ -141,7 +253,28 @@ final readonly class ActiveDirectoryApiClient
             }
         }
 
+        if (!$success && $httpStatus > 0) {
+            return 'Active Directory request failed with HTTP ' . $httpStatus . '.';
+        }
+
         return $success ? 'Active Directory request completed.' : 'Active Directory request failed.';
+    }
+
+    private function httpStatus(array $headers): int
+    {
+        $statusLine = is_string($headers[0] ?? null) ? $headers[0] : '';
+        if (preg_match('/\s(\d{3})\s/', $statusLine, $matches) === 1) {
+            return (int) $matches[1];
+        }
+
+        return 0;
+    }
+
+    private function baseUrl(): string
+    {
+        $url = $this->credential('HRONLINE_AD_BASE_URL');
+
+        return $url !== '' ? rtrim($url, '/') : self::BASE_URL;
     }
 
     private function credential(string $name): string
@@ -149,6 +282,18 @@ final readonly class ActiveDirectoryApiClient
         $value = getenv($name);
 
         return is_string($value) ? trim($value) : '';
+    }
+
+    private function stringValue(mixed $value): string
+    {
+        return is_scalar($value) ? trim((string) $value) : '';
+    }
+
+    private function emailLocalPart(string $email): string
+    {
+        $position = strpos($email, '@');
+
+        return $position === false ? $email : substr($email, 0, $position);
     }
 
     /**
@@ -160,6 +305,19 @@ final readonly class ActiveDirectoryApiClient
             'enabled' => false,
             'success' => false,
             'message' => 'Active Directory API is disabled. Set HRONLINE_AD_ENABLE=1 and credentials to enable.',
+            'data' => null,
+        ];
+    }
+
+    /**
+     * @return array{enabled: bool, success: bool, message: string, data: array<string, mixed>|null}
+     */
+    private function failure(string $message): array
+    {
+        return [
+            'enabled' => true,
+            'success' => false,
+            'message' => $message,
             'data' => null,
         ];
     }

@@ -15,6 +15,9 @@ final readonly class LantikanService
         private LantikanReferenceService $references,
         private ActiveDirectoryApiClient $activeDirectory,
         private LantikanStafBaruService $stafBaruService,
+        private LantikanPhsService $phsService,
+        private LantikanKhasService $khasService,
+        private LantikanSpdpService $spdpService,
         private LantikanStafBaruTransactionService $stafBaruTransactionService,
     ) {}
 
@@ -32,12 +35,12 @@ final readonly class LantikanService
         return [
             'tiles' => [
                 $this->tile('Staf Baru', 'Lantikan staf baharu, termasuk lantikan tetap dan kontrak.', 'user-plus', 'lantikan/lantik-staf-baru', false, '/lantikan/lantik-staf-baru'),
-                $this->tile('PHS', 'Lantikan kontrak jabatan dan Pekerja Sambilan Harian.', 'clock', 'lantikan/lantik-phs', true),
-                $this->tile('Khas', 'Lantikan khas dan sementara.', 'star', 'lantikan/lantik-khas', true),
+                $this->tile('PHS', 'Lantikan kontrak jabatan dan Pekerja Sambilan Harian.', 'clock', 'lantikan/lantik-phs', false, '/lantikan/lantik-phs'),
+                $this->tile('Khas', 'Lantikan khas dan sementara.', 'star', 'lantikan/lantik-khas', false, '/lantikan/lantik-khas'),
                 $this->tile('Staf UMS', 'Lantikan semula staf UMS yang telah tamat perkhidmatan.', 'refresh-cw', 'lantikan/lssu-index', false, '/lantikan/lssu-index'),
                 $this->tile('Sambilan Akademik', 'Lantikan sambilan akademik.', 'book-open', 'lantikan/lantik-sambilanakademik', true, '', false),
                 $this->tile('Lantikan LPU', 'Lembaga Pengarah Universiti.', 'landmark', 'lantikan/lantikan-lpu', true, '', false),
-                $this->tile('Lantikan SPDP', 'Lantikan Staf Skim SPDP UMS.', 'badge-check', 'lantikan/lantik-spdp', true),
+                $this->tile('Lantikan SPDP', 'Lantikan Staf Skim SPDP UMS.', 'badge-check', 'lantikan/lantik-spdp', false, '/lantikan/lantik-spdp'),
             ],
             'adEnabled' => $this->activeDirectory->enabled(),
         ];
@@ -113,6 +116,18 @@ final readonly class LantikanService
             return $this->stafBaruService->dryRun($input);
         }
 
+        if ($flow === 'phs') {
+            return $this->phsService->dryRun($input);
+        }
+
+        if ($flow === 'khas') {
+            return $this->khasService->dryRun($input);
+        }
+
+        if ($flow === 'spdp') {
+            return $this->spdpService->dryRun($input);
+        }
+
         $fields = $this->references->appointmentFields($flow);
         $values = [];
         $errors = [];
@@ -185,6 +200,19 @@ final readonly class LantikanService
     public function suggestedEmail(string $name): string
     {
         return $this->references->emailSuggestion($name);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function emailAvailabilityForIdentity(string $identityId, string $email): ?array
+    {
+        $icno = $this->employees->icnoFromIdentity($identityId);
+        if (!$this->canAccess($icno)) {
+            return null;
+        }
+
+        return $this->stafBaruService->emailAvailability($email);
     }
 
     /**

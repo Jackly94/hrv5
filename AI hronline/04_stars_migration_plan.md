@@ -892,8 +892,8 @@ Current Yii3 Attendance Supervisor menu items and Yii2 mapping:
 
 | Menu item | Current Yii3 URL | Old Yii2 source | Behavior | Yii3 migration target |
 |---|---|---|---|---|
-| Staff lists | `http://127.0.0.1:8083/kehadiran/senarai_kakitangan` | `actionSenarai_kakitangan()`, view `senarai_kakitangan.php`, `TblprcobiodataSearch`, `AksesPengguna::CheckAccess()` | Searchable staff list for users with `hrm.cuti_access`; old page exposes WBB, attendance, WBB-list, and Peraku/Lulus actions. | Good first supervisor route. Read-only list with local filters and Yii2 handoff buttons for WBB/detail/write routes. |
-| Staff Working hours | `http://127.0.0.1:8083/kehadiran/staff-wbb` | `actionStaffWbb()`, view `staffWbb.php`, `AksesPengguna`, `SetPegawai`, `TblWp` | Lists active staff in access-scoped departments/campuses; shows current WP, peraku, pelulus, and action buttons for WBB list and set-peg. | Read-first local page using supervisor scope helper; keep `wbb-list`, `set-peg`, and print as Yii2 handoffs. |
+| Staff lists | `http://127.0.0.1:8083/kehadiran/senarai_kakitangan` | `actionSenarai_kakitangan()`, view `senarai_kakitangan.php`, `TblprcobiodataSearch`, `AksesPengguna::CheckAccess()` | Searchable staff list for users with `hrm.cuti_access`; old page exposes WBB, attendance, WBB-list, and Peraku/Lulus actions. | Local read-only list with local attendance report button. WBB setup and Peraku/Lulus setup remain follow-up workflow debt. |
+| Staff Working hours | `http://127.0.0.1:8083/kehadiran/staff-wbb` | `actionStaffWbb()`, view `staffWbb.php`, `AksesPengguna`, `SetPegawai`, `TblWp` | Lists active staff in access-scoped departments/campuses; shows current WP, peraku, pelulus, and action buttons for WBB list and set-peg. | Local staff list now opens local `wbb-list` and `set-peg` pages. WBB add/edit/delete writes to `attendance.tbl_wp`; Peraku/Lulus setup writes to `hrm.cuti_set_pegawai`. |
 | Monthly Reports | `http://127.0.0.1:8083/kehadiran/sup-mth-rpt` | `actionSupMthRpt()`, view `sup-mth-rpt.php`, `attendance.monthly_rpt` | Month/year report using `attendance.monthly_rpt` filtered by access departments, with optional admin department filter. | High-value read-only route; use attendance standard toolbar, month/year/department filters, table totals. |
 | Yearly Reports | `http://127.0.0.1:8083/kehadiran/sup-year-rpt` | `actionSupYearRpt()`, view `sup-year-rpt.php`, `TblRekod::totalWorkingDays()`, `TblRekod::totalComplianceStatus()` | Year report over access-scoped active staff; counts working days and rejected non-compliance by type. | Read-only route after monthly report; can reuse supervisor staff scope and count helpers. |
 | Card Colour Report | `http://127.0.0.1:8083/kehadiran/senarai-warna-kad` | `actionSenaraiWarnaKad()`, view `senarai-warna-kad.php`, `TblWarnaKad`, `keselamatan\TblWarnaKad` for dept `2` | Month/year card colour report for access-scoped staff; admin can filter department; print route exists. | Read-only route; preserve dept/campus scope and defer print. Dept `2` security table choice needs schema check before implementation. |
@@ -903,8 +903,8 @@ Current Yii3 Attendance Supervisor menu items and Yii2 mapping:
 | Staff Shift List | `http://127.0.0.1:8083/kehadiran/staff-shift-list` | `actionStaffShiftList()`, view `staff-shift-list.php`, `attendance.tbl_staffs` | Lets supervisor add/remove shift staff; also lists current shift staff. | Split. First read-only current shift staff list with Yii2 handoffs. Add/remove writes move to shift write slice. |
 | Shift Setup | `http://127.0.0.1:8083/kehadiran/shift-setup` | `actionShiftSetup()`, view `shift-setup.php`, `attendance.tbl_staffs`, `attendance.tbl_shift`, `ref_wp` | Month grid of shift assignments for supervisor shift staff, with print and create/update modal actions. | Read-only grid first. Create/update/print remain Yii2 handoffs until shift write/PDF slice. |
 | Manage Supervisor/Staff | `http://127.0.0.1:8083/kehadiran-admin/manage-shift-supervisor` | `KehadiranAdminController::actionManageShiftSupervisor()`, view `manage-shift-supervisor.php`, `Tblstaff::search()` | Admin-only list/search across shift supervisors and their staff. | Keep legacy initially, or migrate under admin/supervisor hybrid after admin guard and filters are standardized. |
-| Senarai Bulanan WFH | `http://127.0.0.1:8083/kehadiran/wfh-by-mth` | `actionWfhByMth()`, view `wfh-by-mth.php`, `AksesPengguna::kakitanganSeliaan()`, `TblWfh::wfhByDay()` | Month/day WFH vs WFO totals and percentages, with edit-day action. | Read-only route; edit-day remains Yii2 write handoff. |
-| Jadual WFH | `http://127.0.0.1:8083/kehadiran/wfh-jadual` | `actionWfhJadual()`, view `wfh-jadual.php`, `AksesPengguna::kakitanganSeliaan()`, `TblWfh::isWfh()` | Month grid per staff with H/O markers and WFH percentage per day; print route exists. | Read-only route; print remains legacy until PDF standard is decided. |
+| Senarai Bulanan WFH | `http://127.0.0.1:8083/kehadiran/wfh-by-mth` | `actionWfhByMth()`, view `wfh-by-mth.php`, `AksesPengguna::kakitanganSeliaan()`, `TblWfh::wfhByDay()` | Month/day WFH vs WFO totals and percentages, with edit-day action. | Monthly summary is local. Edit-day now opens local `/kehadiran/wfh-edit-day` with direct add/remove WFH forms scoped to supervisor staff. |
+| Jadual WFH | `http://127.0.0.1:8083/kehadiran/wfh-jadual` | `actionWfhJadual()`, view `wfh-jadual.php`, `AksesPengguna::kakitanganSeliaan()`, `TblWfh::isWfh()` | Month grid per staff with H/O markers and WFH percentage per day; print route exists. | Lightweight staff list first with name/grade/department, staff search, department dropdown, pagination, and `Tindakan` drill-down. Only the selected staff row loads the full monthly WFH grid. |
 | Pantau Permohonan WFH | `http://127.0.0.1:8083/kehadiran/pantau-permohonan-wfh` | `actionPantauPermohonanWfh()`, view `pantau-permohonan-wfh.php`, `TblWfh::search()` | Lists WFH applications for staff under supervisor scope, excluding `ADDED BY PENYELIA`, with status/name/remark filters and delete action. | Read monitor route with local Yii3 delete action protected by POST/CSRF from migrated pages. |
 | Tidak Hadir Tanpa Cuti (THTC) | `http://127.0.0.1:8083/kehadiran/absent-list-sv` | `actionAbsentListSv()`, view `absent-list-sv.php`, `TblThtcSearch::search()` | Supervisor verification list where `icno_verifier` matches current supervisor, excluding status `6`; write action is `verify-thtc-sv`. | Read list plus local Yii3 supervisor verification review form. |
 
@@ -957,9 +957,10 @@ Attendance Supervisor task-by-task execution plan:
    - Reuse `attendance-standard-*`, `data-table`, status badges, compact filters, and Yii2 handoff actions.
 3. Staff lists:
    - Migrate `senarai_kakitangan` read-only with name/grade/department filters.
-   - Handoff `wbb-list`, attendance detail/report, and `set-peg` to Yii2.
+   - Local attendance report is available at `/kehadiran/supervisor-staff-attendance-report?icno=...`.
+   - WBB setup and Peraku/Lulus setup now open local Yii3 pages.
 4. Staff Working hours:
-   - Migrate `staff-wbb` read-only with peraku, pelulus, current WP, WBB-list handoff, and Peraku/Lulus handoff.
+   - Migrate `staff-wbb` with peraku, pelulus, current WP, local WBB maintenance, and local Peraku/Lulus setup.
 5. Monthly Reports:
    - Migrate `sup-mth-rpt` with year/month/department filters and totals from `attendance.monthly_rpt`.
 6. Yearly Reports:
@@ -975,7 +976,7 @@ Attendance Supervisor task-by-task execution plan:
    - Migrate `pantau-permohonan-wfh` read-only.
    - Migrate `wfh-by-mth` read-only daily totals.
    - Migrate `wfh-jadual` read-only H/O grid.
-   - Handoff edit-day/delete/print actions.
+   - Edit-day is local; print actions remain deferred.
 10. Shift Supervisor:
    - Migrate `staff-shift-list` read-only.
    - Migrate `shift-setup` read-only monthly grid.
@@ -989,10 +990,7 @@ Attendance Supervisor task-by-task execution plan:
 
 Supervisor write flows deferred:
 
-- `kehadiran/set-peg`
-- `kehadiran/wbb-list`
 - `kehadiran/kemaskini-peraku`
-- `kehadiran/wfh-edit-day`
 - `kehadiran/staff-shift-list` POST add staff
 - `kehadiran/remove-staff`
 - `kehadiran/create-shift`
@@ -1007,6 +1005,51 @@ Recommended first execution slice:
 4. `sup-mth-rpt`.
 
 This proves the access model and the supervisor report style with lower risk before WFH/shift/THTC workflows.
+
+2026-11-28 cleanup note:
+
+- Replaced the `senarai_kakitangan` row-level `Kehadiran` Yii2 handoff with a local Yii3 supervisor staff attendance report.
+- Added dedicated maintainer-friendly files:
+  - `src/Web/Kehadiran/SupervisorStaffAttendanceReportAction.php`
+  - `src/Web/Kehadiran/supervisor-staff-attendance-report.php`
+- Added `AttendanceService::supervisorStaffAttendanceReport()` with supervisor-scope authorization before reading the target staff report.
+- Route added: `/kehadiran/supervisor-staff-attendance-report`.
+- Remaining visible Supervisor Yii2 row actions after this slice were: `staff-wbb` WBB/set-peg, `pantau-staf` kemaskini-peraku, shield live status, shift remove/create/update, and WFH edit-day. Later 2026-11-28 slices removed the `staff-wbb` and WFH edit-day handoffs.
+
+2026-11-28 staff-wbb legacy button cleanup:
+
+- Removed the visible Yii2 handoffs from `/kehadiran/staff-wbb`.
+- Added local direct routes:
+  - `/kehadiran/wbb-list`
+  - `/kehadiran/del-wbb`
+  - `/kehadiran/set-peg`
+- Added maintainer-friendly direct files:
+  - `src/Web/Kehadiran/WbbListAction.php`
+  - `src/Web/Kehadiran/WbbDeleteAction.php`
+  - `src/Web/Kehadiran/SetPegAction.php`
+  - `src/Web/Kehadiran/wbb-list.php`
+  - `src/Web/Kehadiran/set-peg.php`
+- Local WBB maintenance writes only `attendance.tbl_wp`.
+- Local Peraku/Lulus setup writes only `hrm.cuti_set_pegawai`.
+- This slice follows the migration standard: direct named actions/views, no metadata form loops, and no over-engineered high-level workflow abstraction.
+
+2026-11-28 WFH schedule load cleanup:
+
+- Changed `/kehadiran/wfh-jadual` so the first screen no longer renders the full month grid for every staff member.
+- The page now lists staff name, grade, and department only, with staff search, department dropdown filter, pagination, and a `Tindakan` link.
+- Clicking `Tindakan` reloads the same route with the selected staff ICNO and then renders the full monthly WFH grid for that staff member only.
+- `AttendanceService::supervisorWfhSchedule()` now skips `wfhDaysFor()` until a selected staff ICNO is present.
+
+2026-11-28 WFH edit-day cleanup:
+
+- Replaced the `/kehadiran/wfh-by-mth` `Edit Day` Yii2 handoff with local `/kehadiran/wfh-edit-day`.
+- Added dedicated maintainer-friendly files:
+  - `src/Web/Kehadiran/WfhEditDayAction.php`
+  - `src/Web/Kehadiran/wfh-edit-day.php`
+- Added `AttendanceService::supervisorWfhDay()` and `saveSupervisorWfhDay()` for the old edit-day behavior:
+  - add selected scoped staff to `attendance.tbl_wfh` as one-day `APPROVED` WFH records with remark `ADDED BY PENYELIA`
+  - remove selected scoped WFH records to change them to WFO
+- No live POST/write was executed during verification.
 
 ### STARS-06 - Staff Read-Only Routes
 

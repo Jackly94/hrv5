@@ -244,7 +244,7 @@ $this->setTitle($page['title'] . ' - STARS - ' . $applicationParams->name);
                                             <td><?= Html::encode((string) ($person['position'] ?? '-')) ?></td>
                                             <td><?= Html::encode((string) ($person['departmentShort'] ?? '-')) ?></td>
                                             <td><?= Html::encode((string) ($person['campus'] ?? '-')) ?></td>
-                                            <td><a class="grid-action" href="<?= Html::encode((string) ($person['reportUrl'] ?? '#')) ?>" target="_blank" rel="noopener"><i data-lucide="bar-chart-3"></i><span>Yii2</span></a></td>
+                                            <td><a class="grid-action" href="<?= Html::encode('/kehadiran/supervisor-staff-attendance-report?icno=' . rawurlencode((string) ($person['icno'] ?? ''))) ?>"><i data-lucide="bar-chart-3"></i><span>View</span></a></td>
                                             <td><a class="grid-action" href="<?= Html::encode('/kehadiran/staff-wbb?q=' . rawurlencode((string) ($person['staffNo'] ?? $person['icno'] ?? ''))) ?>"><i data-lucide="clock"></i><span>View</span></a></td>
                                             <td><a class="grid-action" href="<?= Html::encode('/kehadiran/staff-wbb?q=' . rawurlencode((string) ($person['staffNo'] ?? $person['icno'] ?? ''))) ?>"><i data-lucide="users"></i><span>View</span></a></td>
                                         </tr>
@@ -281,8 +281,8 @@ $this->setTitle($page['title'] . ' - STARS - ' . $applicationParams->name);
                                             <td><?= Html::encode((string) $row['peraku']) ?></td>
                                             <td><?= Html::encode((string) $row['pelulus']) ?></td>
                                             <td><span class="status-badge"><?= Html::encode((string) $row['wbb']) ?></span></td>
-                                            <td><a class="grid-action" href="<?= Html::encode((string) $row['wbbUrl']) ?>" target="_blank" rel="noopener"><i data-lucide="clock"></i><span>Yii2</span></a></td>
-                                            <td><a class="grid-action" href="<?= Html::encode((string) $row['pegawaiUrl']) ?>" target="_blank" rel="noopener"><i data-lucide="users"></i><span>Yii2</span></a></td>
+                                            <td><a class="grid-action" href="<?= Html::encode((string) $row['wbbUrl']) ?>"><i data-lucide="clock"></i><span>WBB</span></a></td>
+                                            <td><a class="grid-action" href="<?= Html::encode((string) $row['pegawaiUrl']) ?>"><i data-lucide="users"></i><span>Set</span></a></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -609,7 +609,7 @@ $this->setTitle($page['title'] . ' - STARS - ' . $applicationParams->name);
                     <section class="content-inner-card staff-page-panel attendance-compact-panel">
                         <div class="responsive-table">
                             <table class="data-table attendance-compact-table">
-                                <thead><tr><th>Bil</th><th>Tarikh</th><th>Hari</th><th>WFH</th><th>WFO</th><th>Total Staff</th><th>Edit Day</th></tr></thead>
+                                <thead><tr><th>Bil</th><th>Tarikh</th><th>Hari</th><th>WFH</th><th>WFO</th><th>Total Staff</th><th>Tindakan</th></tr></thead>
                                 <tbody>
                                     <?php foreach ($wfhMonth['rows'] as $index => $row): ?>
                                         <tr>
@@ -619,7 +619,7 @@ $this->setTitle($page['title'] . ' - STARS - ' . $applicationParams->name);
                                             <td><span class="status-badge status-badge-success"><?= Html::encode((string) $row['wfh']) ?></span></td>
                                             <td><?= Html::encode((string) $row['wfo']) ?></td>
                                             <td><?= Html::encode((string) $row['totalStaff']) ?></td>
-                                            <td><a class="grid-action" href="<?= Html::encode((string) $row['editUrl']) ?>" target="_blank" rel="noopener"><i data-lucide="pencil"></i><span>Yii2</span></a></td>
+                                            <td><a class="grid-action attendance-primary-action" href="<?= Html::encode((string) $row['editUrl']) ?>"><i data-lucide="pencil"></i><span>Tindakan</span></a></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -630,28 +630,84 @@ $this->setTitle($page['title'] . ' - STARS - ' . $applicationParams->name);
             <?php endif; ?>
 
             <?php if ($page['slug'] === 'wfh-jadual' && $wfhSchedule !== null): ?>
-                <?php $toolbar('/kehadiran/wfh-jadual', 'calendar-check', 'attendance-icon-success', 'Jadual WFH', (string) $wfhSchedule['monthName'] . ' ' . (string) $year, $monthYearFields(true) . $departmentField()); ?>
-                <div class="page-section-body page-card-section">
-                    <section class="content-inner-card staff-page-panel attendance-compact-panel">
-                        <div class="responsive-table">
-                            <table class="data-table attendance-compact-table attendance-calendar-table">
-                                <thead><tr><th>Nama</th><?php foreach ($wfhSchedule['days'] as $day): ?><th><?= Html::encode((string) $day['day']) ?><br><small><?= Html::encode((string) $day['weekday']) ?></small></th><?php endforeach; ?></tr></thead>
-                                <tbody>
-                                    <?php if ($wfhSchedule['rows'] === []): ?><tr><td colspan="<?= Html::encode((string) (count($wfhSchedule['days']) + 1)) ?>" class="staff-empty">Tiada kakitangan untuk dipaparkan.</td></tr><?php endif; ?>
-                                    <?php foreach ($wfhSchedule['rows'] as $row): ?>
-                                        <?php $person = $row['staff']; ?>
-                                        <tr>
-                                            <td class="grid-name"><?= Html::encode($staffName($person)) ?><br><small><?= Html::encode($staffMeta($person)) ?></small></td>
-                                            <?php foreach ($row['cells'] as $cell): ?>
-                                                <td><span class="status-badge <?= Html::encode($badgeClass((string) $cell['status'])) ?>"><?= Html::encode((string) $cell['status']) ?></span></td>
+                <?php if ((string) ($wfhSchedule['selectedStaffIcno'] ?? '') === ''): ?>
+                    <?php /** @var list<array<string, mixed>> $allRows */
+                    $allRows = $wfhSchedule['rows'];
+                    $pageData = $paginateRows($allRows);
+                    $rows = $pageData['rows'];
+                    $numberOffset = (int) $pageData['offset'];
+                    $wfhScheduleFields = $monthYearFields(true)
+                        . '<label>Search<input type="text" name="q" value="' . Html::encode((string) ($staffFilters['q'] ?? '')) . '" placeholder="Name, staff no, IC"></label>'
+                        . $departmentField(); ?>
+                    <?php $toolbar('/kehadiran/wfh-jadual', 'calendar-check', 'attendance-icon-success', 'Jadual WFH', (string) $wfhSchedule['monthName'] . ' ' . (string) $year, $wfhScheduleFields); ?>
+                    <div class="page-section-body page-card-section">
+                        <section class="content-inner-card staff-page-panel attendance-compact-panel">
+                            <div class="responsive-table">
+                                <table class="data-table attendance-compact-table">
+                                    <thead><tr><th>Bil</th><th>Nama Kakitangan</th><th>Gred</th><th>Jabatan</th><th>Tindakan</th></tr></thead>
+                                    <tbody>
+                                        <?php if ($rows === []): ?><tr><td colspan="5" class="staff-empty">Tiada kakitangan untuk dipaparkan.</td></tr><?php endif; ?>
+                                        <?php foreach ($rows as $index => $row): ?>
+                                            <?php $person = $row['staff'];
+                                            $detailUrl = '/kehadiran/wfh-jadual?' . http_build_query($cleanQuery([
+                                                'tahun' => $year,
+                                                'bulan' => $month,
+                                                'q' => $staffFilters['q'] ?? '',
+                                                'dept_id' => $departmentId,
+                                                'icno' => $person['icno'] ?? '',
+                                            ])); ?>
+                                            <tr>
+                                                <td><span class="attendance-row-number"><?= Html::encode((string) ($numberOffset + $index + 1)) ?></span></td>
+                                                <td><?= Html::encode($staffName($person)) ?><br><small><?= Html::encode((string) ($person['staffNo'] ?? $person['icno'] ?? '-')) ?></small></td>
+                                                <td><?= Html::encode((string) ($person['grade'] ?? '-')) ?></td>
+                                                <td><?= Html::encode((string) ($person['departmentShort'] ?? $person['department'] ?? '-')) ?></td>
+                                                <td><a class="grid-action attendance-primary-action" href="<?= Html::encode($detailUrl) ?>"><i data-lucide="calendar-days"></i><span>Tindakan</span></a></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <?php $renderPagination('/kehadiran/wfh-jadual', ['tahun' => $year, 'bulan' => $month, 'q' => $staffFilters['q'] ?? '', 'dept_id' => $departmentId], $pageData); ?>
+                        </section>
+                    </div>
+                <?php else: ?>
+                    <?php $selectedStaff = is_array($wfhSchedule['selectedStaff'] ?? null) ? $wfhSchedule['selectedStaff'] : null;
+                    $backUrl = '/kehadiran/wfh-jadual?' . http_build_query($cleanQuery([
+                        'tahun' => $year,
+                        'bulan' => $month,
+                        'q' => $staffFilters['q'] ?? '',
+                        'dept_id' => $departmentId,
+                    ]));
+                    $selectedFields = '<input type="hidden" name="icno" value="' . Html::encode((string) ($wfhSchedule['selectedStaffIcno'] ?? '')) . '">' . $monthYearFields(true); ?>
+                    <?php $toolbar('/kehadiran/wfh-jadual', 'calendar-check', 'attendance-icon-success', 'Jadual WFH', (string) $wfhSchedule['monthName'] . ' ' . (string) $year, $selectedFields); ?>
+                    <div class="page-section-body page-card-section">
+                        <section class="content-inner-card staff-page-panel attendance-compact-panel">
+                            <div class="attendance-standard-actions">
+                                <a class="button-link button-link-secondary" href="<?= Html::encode($backUrl) ?>"><i data-lucide="arrow-left"></i><span>Kembali Senarai</span></a>
+                            </div>
+                            <?php if ($selectedStaff === null): ?>
+                                <p class="staff-empty">Kakitangan tidak ditemui dalam skop penyelia.</p>
+                            <?php else: ?>
+                                <div class="responsive-table">
+                                    <table class="data-table attendance-compact-table attendance-calendar-table">
+                                        <thead><tr><th>Nama</th><?php foreach ($wfhSchedule['days'] as $day): ?><th><?= Html::encode((string) $day['day']) ?><br><small><?= Html::encode((string) $day['weekday']) ?></small></th><?php endforeach; ?></tr></thead>
+                                        <tbody>
+                                            <?php foreach ($wfhSchedule['rows'] as $row): ?>
+                                                <?php $person = $row['staff']; ?>
+                                                <tr>
+                                                    <td class="grid-name"><?= Html::encode($staffName($person)) ?><br><small><?= Html::encode($staffMeta($person)) ?></small></td>
+                                                    <?php foreach ($row['cells'] as $cell): ?>
+                                                        <td><span class="status-badge <?= Html::encode($badgeClass((string) $cell['status'])) ?>"><?= Html::encode((string) $cell['status']) ?></span></td>
+                                                    <?php endforeach; ?>
+                                                </tr>
                                             <?php endforeach; ?>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
-                </div>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php endif; ?>
+                        </section>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
 
             <?php if ($page['slug'] === 'pantau-permohonan-wfh' && $wfhApplications !== null): ?>
