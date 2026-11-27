@@ -1,7 +1,7 @@
-SetEnv APP_BASE_PATH /hrv5
+SetEnv APP_BASE_PATH /hronlinev5
 
 RewriteEngine On
-RewriteBase /hrv5/
+RewriteBase /hronlinev5/
 
 RewriteRule ^(assets|images|files)(/.*)?$ public/$0 [L]
 RewriteRule ^(favicon\.ico|favicon\.svg|robots\.txt)$ public/$1 [L]

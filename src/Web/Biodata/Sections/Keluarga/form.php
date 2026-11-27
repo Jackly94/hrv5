@@ -57,6 +57,14 @@ $selected = static fn (array $values, string $field, string $value): string => (
                     <div class="record-form-grid">
                         <?php foreach ($form['fields'] as $field): ?>
                             <?php
+                            if (isset($field['section'])):
+                                ?>
+                                <div class="grid-field grid-field-wide record-form-section-heading">
+                                    <strong><?= Html::encode((string) $field['section']) ?></strong>
+                                </div>
+                                <?php
+                                continue;
+                            endif;
                             $name = (string) $field['name'];
                             $type = (string) ($field['type'] ?? 'text');
                             $label = (string) $field['label'];

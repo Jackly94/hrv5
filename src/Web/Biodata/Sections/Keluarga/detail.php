@@ -48,7 +48,7 @@ $this->setTitle($title . ' - ' . $applicationParams->name);
                     <div class="profile-card-header">
                         <h2><?= Html::encode($detail['groupTitle']) ?></h2>
                     </div>
-                    <dl class="detail-list">
+                    <dl class="detail-list keluarga-detail-list">
                         <?php foreach ($detail['fields'] as $field): ?>
                             <div>
                                 <dt><?= Html::encode($field['label']) ?></dt>
@@ -66,6 +66,39 @@ $this->setTitle($title . ' - ' . $applicationParams->name);
                         <?php endforeach; ?>
                     </dl>
                 </section>
+
+                <?php foreach (($detail['tables'] ?? []) as $table): ?>
+                    <section class="content-inner-card">
+                        <div class="profile-card-header">
+                            <h2><?= Html::encode((string) ($table['title'] ?? 'Maklumat')) ?></h2>
+                        </div>
+                        <div class="table-scroll grid-table-wrap">
+                            <table class="data-table staff-overview-table">
+                                <thead>
+                                <tr>
+                                    <?php foreach (($table['columns'] ?? []) as $column): ?>
+                                        <th><?= Html::encode((string) $column) ?></th>
+                                    <?php endforeach; ?>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <?php if (($table['rows'] ?? []) === []): ?>
+                                    <tr>
+                                        <td class="grid-empty" colspan="<?= Html::encode((string) max(1, count($table['columns'] ?? []))) ?>">Tiada Rekod</td>
+                                    </tr>
+                                <?php endif; ?>
+                                <?php foreach (($table['rows'] ?? []) as $row): ?>
+                                    <tr>
+                                        <?php foreach ($row as $cell): ?>
+                                            <td><?= Html::encode((string) $cell) ?></td>
+                                        <?php endforeach; ?>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                <?php endforeach; ?>
             </div>
         <?php endif; ?>
     </section>

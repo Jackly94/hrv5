@@ -192,6 +192,21 @@ src/Web/Biodata/Sections/{Section}/, usually:
 - [x] Create `src/Shared/Biodata/Sections/KeluargaCrudService.php`.
 - [ ] Extract Keluarga list/detail logic from `StaffRecordOverviewService`.
 - [ ] Extract Keluarga CRUD config and save/delete handling from `StaffRecordOverviewCrudService`.
+- [x] Restore Keluarga Yii2 field parity baseline in dedicated Yii3 detail/form:
+  - full detail query for old `tblprfmy` fields and reference labels
+  - expanded form fields for identity, status, marriage, work, address, OKU, and health flags
+  - disease/allergy read tables from `tblprfmy_disease`
+- [x] Record Keluarga implementation changes from 2026-11-27:
+  - `KeluargaService.php` now uses a dedicated Yii2-parity detail query for `tblprfmy`, reference labels, OKU verification fields, attachments, and disease/allergy read tables.
+  - `KeluargaCrudService.php` now exposes the expanded Yii2-family form field set with section markers for basic identity, status, marriage, employment, address/contact, OKU, and health information.
+  - `BiodataSectionCrudSupport.php` now skips non-input section markers during defaults, edit values, normalization, validation, record building, and file-field handling; it also loads the extra Keluarga reference option lists.
+  - `src/Web/Biodata/Sections/Keluarga/form.php` now renders form section headings.
+  - `src/Web/Biodata/Sections/Keluarga/detail.php` now renders disease/allergy tables and uses the Keluarga-only compact detail-list class.
+  - `assets/main/site.css` now styles the Keluarga detail list as a two-column desktop grid with single-column responsive fallback.
+- [ ] Restore exact Yii2 Keluarga behavior still outside field parity:
+  - UMS/non-UMS chooser and staff-address prefill
+  - disease/allergy add/edit/delete row actions
+  - relation verification side effects in `pdstblkeluarga`
 - [x] Add new Keluarga routes:
   - [x] `/biodata/keluarga/view`
   - [x] `/biodata/keluarga/adminview`

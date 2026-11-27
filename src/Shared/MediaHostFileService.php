@@ -175,6 +175,95 @@ final readonly class MediaHostFileService
         return ['success' => true];
     }
 
+    /**
+     * @return array{success: bool, hash?: string, message?: string}
+     */
+    public function uploadLocalFile(
+        string $path,
+        string $filename,
+        string $directory,
+        string $userId,
+        string $category = '04',
+        string $description = '-',
+    ): array {
+        if (!is_file($path) || !is_readable($path)) {
+            return ['success' => false, 'message' => 'Fail tidak dijumpai atau tidak boleh dibaca.'];
+        }
+
+        if (!function_exists('curl_init')) {
+            return ['success' => false, 'message' => 'File upload service is unavailable on this server.'];
+        }
+
+        $credentials = $this->credentials();
+        if ($credentials === null) {
+            return ['success' => false, 'message' => 'Tetapan MediaHost tidak lengkap.'];
+        }
+
+        $mimeType = function_exists('mime_content_type') ? (string) @mime_content_type($path) : '';
+        if ($mimeType === '') {
+            $mimeType = 'application/octet-stream';
+        }
+
+        $curl = curl_init($this->endpoint(self::UPLOAD_PATH));
+        if ($curl === false) {
+            return ['success' => false, 'message' => 'File upload service is unavailable.'];
+        }
+
+        try {
+            curl_setopt_array($curl, [
+                CURLOPT_POST => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CONNECTTIMEOUT => $this->intConfig('connectTimeout', 5),
+                CURLOPT_TIMEOUT => $this->intConfig('timeout', 60),
+                CURLOPT_POSTFIELDS => [
+                    'secret_key' => $credentials['secretKey'],
+                    'public_key' => $credentials['publicKey'],
+                    'uploader_id' => $credentials['uploaderId'],
+                    'user_id' => $userId,
+                    'autocreatedirectory' => '1',
+                    'directory' => $directory,
+                    'file_title' => $filename,
+                    'file' => new \CURLFile($path, $mimeType, $filename),
+                    'file_description' => $description,
+                    'category' => $category,
+                    'tag' => '-',
+                    'accessibility' => '01',
+                    'overwrite' => '0',
+                    'hashcode' => '',
+                ],
+            ]);
+
+            $responseBody = curl_exec($curl);
+            $error = curl_error($curl);
+            $statusCode = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+
+            if ($responseBody === false || $error !== '') {
+                return ['success' => false, 'message' => $error !== '' ? $error : 'MediaHost tidak memberi respons.'];
+            }
+
+            $payload = json_decode((string) $responseBody, true);
+            if (!is_array($payload)) {
+                return ['success' => false, 'message' => 'Respons MediaHost tidak sah.'];
+            }
+
+            if ($statusCode >= 400 || ($payload['status'] ?? false) !== true) {
+                return [
+                    'success' => false,
+                    'message' => is_scalar($payload['message'] ?? null) ? (string) $payload['message'] : 'Muat naik dokumen gagal.',
+                ];
+            }
+
+            $hash = $payload['file_name_hashcode'] ?? null;
+            if (!is_string($hash) || trim($hash) === '') {
+                return ['success' => false, 'message' => 'MediaHost tidak memulangkan kod fail.'];
+            }
+
+            return ['success' => true, 'hash' => $hash];
+        } finally {
+            curl_close($curl);
+        }
+    }
+
     public function viewUrl(string $hashcode): string
     {
         $hashcode = trim($hashcode);

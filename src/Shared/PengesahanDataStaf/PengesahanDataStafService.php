@@ -22,23 +22,23 @@ final readonly class PengesahanDataStafService
             [
                 'title' => 'Keahlian',
                 'subtitle' => 'Pengesahan rekod badan profesional kakitangan.',
-                'url' => '#',
+                'url' => '/pengesahan-data-staf/keahlian',
                 'icon' => 'badge-check',
-                'enabled' => false,
+                'enabled' => true,
             ],
             [
                 'title' => 'Keluarga',
                 'subtitle' => 'Pengesahan dokumen dan status keluarga kakitangan.',
-                'url' => '#',
+                'url' => '/pengesahan-data-staf/keluarga',
                 'icon' => 'users',
-                'enabled' => false,
+                'enabled' => true,
             ],
             [
                 'title' => 'Hubungan Keluarga',
                 'subtitle' => 'Pengesahan hubungan keluarga yang dikemaskini.',
-                'url' => '#',
+                'url' => '/pengesahan-data-staf/hubungan-keluarga',
                 'icon' => 'network',
-                'enabled' => false,
+                'enabled' => true,
             ],
         ];
     }

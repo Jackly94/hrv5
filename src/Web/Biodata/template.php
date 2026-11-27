@@ -63,7 +63,6 @@ $this->setTitle('Profil Staf - ' . $applicationParams->name);
         <div class="profile-hero page-card-section">
             <img class="profile-photo" src="<?= Html::encode($profile['profileImage']) ?>" alt="Profile image">
             <div class="profile-identity">
-                <span class="profile-label">No. KP / Paspot</span>
                 <h2><?= Html::encode($profile['displayName']) ?></h2>
                 <p><?= Html::encode($profile['icno']) ?> · <?= Html::encode($profile['staffNo']) ?></p>
                 <p><?= Html::encode($profile['email']) ?></p>

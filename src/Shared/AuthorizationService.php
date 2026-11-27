@@ -22,12 +22,34 @@ final readonly class AuthorizationService
         return (bool) $this->db->createCommand(
             <<<SQL
             SELECT 1
-            FROM system_core.tbl_user_role user_role
-            INNER JOIN system_core.tbl_role role ON role.role_id = user_role.role_id
+            FROM system_core.user_role user_role
+            INNER JOIN system_core.roles role ON role.role_id = user_role.role_id
             WHERE user_role.user_id = :icno AND role.controller_id = :controller
             LIMIT 1
             SQL,
             [':icno' => $icno, ':controller' => $controllerId],
+        )->queryScalar();
+    }
+
+    public function canAccessControllerAction(string $icno, string $controllerId, string $actionId): bool
+    {
+        if ($icno === '' || $actionId === '' || !$this->staffExists($icno)) {
+            return false;
+        }
+
+        return (bool) $this->db->createCommand(
+            <<<SQL
+            SELECT 1
+            FROM system_core.user_role user_role
+            INNER JOIN system_core.roles role ON role.role_id = user_role.role_id
+            INNER JOIN system_core.role_perm role_perm ON role_perm.role_id = role.role_id
+            INNER JOIN system_core.permissions permission ON permission.perm_id = role_perm.perm_id
+            WHERE user_role.user_id = :icno
+              AND role.controller_id = :controller
+              AND permission.perm_desc IN (:action, '*')
+            LIMIT 1
+            SQL,
+            [':icno' => $icno, ':controller' => $controllerId, ':action' => $actionId],
         )->queryScalar();
     }
 

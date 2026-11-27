@@ -4,15 +4,44 @@ declare(strict_types=1);
 
 namespace App\Web\PengesahanDataStaf;
 
+use App\Shared\AuthorizationService;
+use App\Shared\EmployeeRepository;
+use App\Shared\LegacySessionReader;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 final readonly class ActionSupport
 {
+    private const CONTROLLER_ID = 'pengesahan-data-staf';
+
     public static function redirect(ResponseFactoryInterface $responseFactory, string $url): ResponseInterface
     {
         return $responseFactory->createResponse(302)->withHeader('Location', $url);
+    }
+
+    /**
+     * @return array{response: ResponseInterface|null, icno: string}
+     */
+    public static function requireControllerAccess(
+        ServerRequestInterface $request,
+        ResponseFactoryInterface $responseFactory,
+        LegacySessionReader $sessionReader,
+        EmployeeRepository $employees,
+        AuthorizationService $authorization,
+        string $actionId,
+    ): array {
+        $legacySession = $sessionReader->read($request);
+        if ($legacySession === null) {
+            return ['response' => self::redirect($responseFactory, '/login'), 'icno' => ''];
+        }
+
+        $icno = $employees->icnoFromIdentity($legacySession['identityId']);
+        if (!$authorization->canAccessControllerAction($icno, self::CONTROLLER_ID, $actionId)) {
+            return ['response' => $responseFactory->createResponse(403), 'icno' => $icno];
+        }
+
+        return ['response' => null, 'icno' => $icno];
     }
 
     public static function search(ServerRequestInterface $request): string

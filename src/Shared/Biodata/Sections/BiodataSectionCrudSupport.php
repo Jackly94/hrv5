@@ -153,6 +153,9 @@ final readonly class BiodataSectionCrudSupport
     {
         $values = [];
         foreach ($config['fields'] as $field) {
+            if (!$this->isInputField($field)) {
+                continue;
+            }
             $values[$field['name']] = '';
         }
 
@@ -168,6 +171,9 @@ final readonly class BiodataSectionCrudSupport
 
         $values = [];
         foreach ($config['fields'] as $field) {
+            if (!$this->isInputField($field)) {
+                continue;
+            }
             $name = $field['name'];
             $values[$name] = ($field['type'] ?? '') === 'date'
                 ? $this->dateFormatter->formValue($row[$name] ?? null)
@@ -181,6 +187,9 @@ final readonly class BiodataSectionCrudSupport
     {
         $values = [];
         foreach ($config['fields'] as $field) {
+            if (!$this->isInputField($field)) {
+                continue;
+            }
             $name = $field['name'];
             $type = $field['type'] ?? 'text';
             if (($field['readonlyOnUpdate'] ?? false) && array_key_exists($name, $existing)) {
@@ -200,6 +209,9 @@ final readonly class BiodataSectionCrudSupport
     {
         $record = [$config['icnoColumn'] => $icno];
         foreach ($config['fields'] as $field) {
+            if (!$this->isInputField($field)) {
+                continue;
+            }
             $name = $field['name'];
             $value = $values[$name] ?? '';
             $record[$name] = ($field['type'] ?? '') === 'date' && $value === '' ? null : $value;
@@ -212,6 +224,9 @@ final readonly class BiodataSectionCrudSupport
     {
         $errors = [];
         foreach ($config['fields'] as $field) {
+            if (!$this->isInputField($field)) {
+                continue;
+            }
             $name = $field['name'];
             if (($field['required'] ?? false) && ($field['type'] ?? '') !== 'file' && ($values[$name] ?? '') === '') {
                 $errors[$name] = $field['label'] . ' diperlukan.';
@@ -281,7 +296,7 @@ final readonly class BiodataSectionCrudSupport
 
     private function fileFields(array $config): array
     {
-        return array_values(array_filter($config['fields'], static fn (array $field): bool => ($field['type'] ?? '') === 'file'));
+        return array_values(array_filter($config['fields'], fn (array $field): bool => $this->isInputField($field) && ($field['type'] ?? '') === 'file'));
     }
 
     private function options(): array
@@ -289,17 +304,37 @@ final readonly class BiodataSectionCrudSupport
         return [
             'yesNo' => [['id' => '1', 'name' => 'Ya'], ['id' => '0', 'name' => 'Tidak']],
             'activeInactive' => [['id' => '1', 'name' => 'Aktif'], ['id' => '0', 'name' => 'Tidak Aktif']],
+            'idTypes' => $this->referenceData->options('SELECT IdTypeCd, IdType FROM hronline.ref_idtype WHERE isActive = 1 ORDER BY IdType', 'IdTypeCd', 'IdType'),
+            'icTypes' => $this->referenceData->options('SELECT ICTypeCd, ICType FROM hronline.ictype ORDER BY ICType', 'ICTypeCd', 'ICType'),
+            'titles' => $this->referenceData->titles(),
+            'genders' => $this->referenceData->genders(),
+            'religions' => $this->referenceData->religions(),
+            'races' => $this->referenceData->races(),
+            'maritalStatuses' => $this->referenceData->maritalStatuses(),
+            'nationalityStatuses' => $this->referenceData->nationalityStatuses(),
             'institutions' => $this->referenceData->institutions(),
             'educationLevels' => $this->referenceData->educationLevels(),
             'majors' => $this->referenceData->majors(),
             'passportTypes' => $this->referenceData->passportTypes(),
             'countries' => $this->referenceData->countries(),
             'states' => $this->referenceData->options('SELECT StateCd, State FROM hronline.state ORDER BY State', 'StateCd', 'State'),
+            'cities' => $this->referenceData->options('SELECT CityCd, City FROM hronline.city ORDER BY City', 'CityCd', 'City'),
             'expertiseClusters' => $this->referenceData->expertiseClusters(),
             'relationships' => $this->referenceData->relationships(),
+            'familyStatuses' => $this->referenceData->options('SELECT FmyStatusCd, FmyStatus FROM hronline.familystatus ORDER BY FmyStatus', 'FmyStatusCd', 'FmyStatus'),
+            'dependencyTypes' => $this->referenceData->options('SELECT DependencyCd, DependencyNm FROM hronline.dependency ORDER BY DependencyNm', 'DependencyCd', 'DependencyNm'),
+            'corporateBodies' => $this->referenceData->options('SELECT CorpBodyTypeCd, CorpBodyType FROM hronline.corporatebody ORDER BY CorpBodyType', 'CorpBodyTypeCd', 'CorpBodyType'),
+            'occupationSectors' => $this->referenceData->options('SELECT OccSectorCd, OccSector FROM hronline.occupationsector ORDER BY OccSector', 'OccSectorCd', 'OccSector'),
+            'occupations' => $this->referenceData->options('SELECT id, nama_pekerjaan FROM hronline.ref_pekerjaan ORDER BY nama_pekerjaan', 'id', 'nama_pekerjaan'),
+            'disabilityTypes' => $this->referenceData->disabilityTypes(),
             'vaccineTypes' => $this->referenceData->vaccineTypes(),
             'banks' => $this->referenceData->banks(),
         ];
+    }
+
+    private function isInputField(array $field): bool
+    {
+        return isset($field['name']) && is_string($field['name']) && $field['name'] !== '';
     }
 
     private function formValue(mixed $value): string

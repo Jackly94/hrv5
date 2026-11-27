@@ -142,6 +142,110 @@ document.querySelectorAll('[data-confirm-submit]').forEach((form) => {
     });
 });
 
+document.querySelectorAll('[data-check-all]').forEach((toggle) => {
+    if (!(toggle instanceof HTMLInputElement)) {
+        return;
+    }
+
+    const group = toggle.dataset.checkAll || '';
+    const items = Array.from(document.querySelectorAll(`[data-check-item="${CSS.escape(group)}"]`))
+        .filter((item) => item instanceof HTMLInputElement);
+
+    const syncToggle = () => {
+        const checkedCount = items.filter((item) => item.checked).length;
+        toggle.checked = items.length > 0 && checkedCount === items.length;
+        toggle.indeterminate = checkedCount > 0 && checkedCount < items.length;
+    };
+
+    toggle.addEventListener('change', () => {
+        items.forEach((item) => {
+            item.checked = toggle.checked;
+        });
+        syncToggle();
+    });
+
+    items.forEach((item) => {
+        item.addEventListener('change', syncToggle);
+    });
+
+    syncToggle();
+});
+
+document.querySelectorAll('[data-profile-guide-modal]').forEach((modal) => {
+    const openButtons = document.querySelectorAll('[data-profile-guide-open]');
+    const closeButtons = modal.querySelectorAll('[data-profile-guide-close]');
+    const firstCloseButton = closeButtons[0] instanceof HTMLElement ? closeButtons[0] : null;
+
+    const openModal = () => {
+        modal.hidden = false;
+        document.body.classList.add('modal-open');
+        firstCloseButton?.focus();
+    };
+
+    const closeModal = () => {
+        modal.hidden = true;
+        document.body.classList.remove('modal-open');
+    };
+
+    openButtons.forEach((button) => {
+        button.addEventListener('click', openModal);
+    });
+
+    closeButtons.forEach((button) => {
+        button.addEventListener('click', closeModal);
+    });
+
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            closeModal();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !modal.hidden) {
+            closeModal();
+        }
+    });
+
+    openModal();
+});
+
+document.querySelectorAll('[data-profile-upload-input]').forEach((input) => {
+    const field = input.closest('.grid-field');
+    const preview = field?.querySelector('[data-profile-upload-preview]');
+    const image = field?.querySelector('[data-profile-upload-preview-image]');
+    let objectUrl = null;
+
+    if (!(input instanceof HTMLInputElement) || !(preview instanceof HTMLElement) || !(image instanceof HTMLImageElement)) {
+        return;
+    }
+
+    const hidePreview = () => {
+        if (objectUrl !== null) {
+            URL.revokeObjectURL(objectUrl);
+            objectUrl = null;
+        }
+
+        image.removeAttribute('src');
+        preview.hidden = true;
+    };
+
+    input.addEventListener('change', () => {
+        hidePreview();
+
+        const file = input.files?.[0];
+        if (!file || !file.type.startsWith('image/')) {
+            return;
+        }
+
+        objectUrl = URL.createObjectURL(file);
+        image.src = objectUrl;
+        preview.hidden = false;
+    });
+
+    input.form?.addEventListener('reset', hidePreview);
+});
+
 document.querySelectorAll('[data-tabs]').forEach((tabsRoot) => {
     const tabs = Array.from(tabsRoot.querySelectorAll('[role="tab"]'));
     const panels = Array.from(tabsRoot.querySelectorAll('[role="tabpanel"]'));

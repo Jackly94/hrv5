@@ -30,6 +30,48 @@ return [
             Route::get('/pengesahan-data-staf/index')
                 ->action(Web\PengesahanDataStaf\IndexAction::class)
                 ->name('pengesahan-data-staf-index'),
+            Route::get('/pengesahan-data-staf/keluarga')
+                ->action(Web\PengesahanDataStaf\Keluarga\IndexAction::class)
+                ->name('pengesahan-data-staf-keluarga'),
+            Route::post('/pengesahan-data-staf/keluarga/verify')
+                ->action(Web\PengesahanDataStaf\Keluarga\VerifyAction::class)
+                ->name('pengesahan-data-staf-keluarga-verify'),
+            Route::get('/pengesahan-data-staf/hubungan-keluarga')
+                ->action(Web\PengesahanDataStaf\HubunganKeluarga\IndexAction::class)
+                ->name('pengesahan-data-staf-hubungan-keluarga'),
+            Route::post('/pengesahan-data-staf/hubungan-keluarga/verify')
+                ->action(Web\PengesahanDataStaf\HubunganKeluarga\VerifyAction::class)
+                ->name('pengesahan-data-staf-hubungan-keluarga-verify'),
+            Route::get('/pengesahan-data-staf/pds-keluarga')
+                ->action(Web\PengesahanDataStaf\Keluarga\IndexAction::class)
+                ->name('pengesahan-data-staf-pds-keluarga'),
+            Route::post('/pengesahan-data-staf/pds-keluarga')
+                ->action(Web\PengesahanDataStaf\Keluarga\VerifyAction::class)
+                ->name('pengesahan-data-staf-pds-keluarga-post'),
+            Route::get('/pengesahan-data-staf/pds-keluarga-hubungan')
+                ->action(Web\PengesahanDataStaf\HubunganKeluarga\IndexAction::class)
+                ->name('pengesahan-data-staf-pds-keluarga-hubungan'),
+            Route::post('/pengesahan-data-staf/pds-keluarga-hubungan')
+                ->action(Web\PengesahanDataStaf\HubunganKeluarga\VerifyAction::class)
+                ->name('pengesahan-data-staf-pds-keluarga-hubungan-post'),
+            Route::get('/pengesahan-data-staf/keahlian')
+                ->action(Web\PengesahanDataStaf\Keahlian\IndexAction::class)
+                ->name('pengesahan-data-staf-keahlian'),
+            Route::get('/pengesahan-data-staf/keahlian/staf')
+                ->action(Web\PengesahanDataStaf\Keahlian\StaffAction::class)
+                ->name('pengesahan-data-staf-keahlian-staf'),
+            Route::post('/pengesahan-data-staf/keahlian/verify')
+                ->action(Web\PengesahanDataStaf\Keahlian\VerifyAction::class)
+                ->name('pengesahan-data-staf-keahlian-verify'),
+            Route::get('/pengesahan-data-staf/pds-keahlian')
+                ->action(Web\PengesahanDataStaf\Keahlian\IndexAction::class)
+                ->name('pengesahan-data-staf-pds-keahlian'),
+            Route::post('/pengesahan-data-staf/pds-keahlian')
+                ->action(Web\PengesahanDataStaf\Keahlian\VerifyAction::class)
+                ->name('pengesahan-data-staf-pds-keahlian-post'),
+            Route::get('/pengesahan-data-staf/pds-keahlian-individu')
+                ->action(Web\PengesahanDataStaf\Keahlian\StaffAction::class)
+                ->name('pengesahan-data-staf-pds-keahlian-individu'),
             Route::get('/pengesahan-data-staf/akaun-bank')
                 ->action(Web\PengesahanDataStaf\AkaunBank\IndexAction::class)
                 ->name('pengesahan-data-staf-akaun-bank'),
@@ -1038,9 +1080,48 @@ return [
             Route::methods(['GET', 'POST'], '/biodata/kemaskinipenetapanpengguna')
                 ->action(Web\RecordAction\Action::class)
                 ->name('biodata-kemaskinipenetapanpengguna'),
-            Route::methods(['GET', 'POST'], '/gambar-profile/semakan')
-                ->action(Web\RecordAction\Action::class)
+            Route::get('/gambar-profile/semakan')
+                ->action(Web\GambarProfile\Staff\RequestListAction::class)
                 ->name('gambar-profile-semakan'),
+            Route::methods(['GET', 'POST'], '/gambar-profile/gambar')
+                ->action(Web\GambarProfile\Staff\UploadAction::class)
+                ->name('gambar-profile-gambar'),
+            Route::get('/gambar-profile/lihat-permohonan')
+                ->action(Web\GambarProfile\Staff\DetailAction::class)
+                ->name('gambar-profile-lihat-permohonan'),
+            Route::get('/gambar-profile/senarai')
+                ->action(Web\GambarProfile\Admin\PendingListAction::class)
+                ->name('gambar-profile-senarai'),
+            Route::get('/gambar-profile/rekod-permohonan')
+                ->action(Web\GambarProfile\Admin\HistoryAction::class)
+                ->name('gambar-profile-rekod-permohonan'),
+            Route::methods(['GET', 'POST'], '/gambar-profile/semakan-gambar')
+                ->action(Web\GambarProfile\Admin\ReviewAction::class)
+                ->name('gambar-profile-semakan-gambar'),
+            Route::methods(['GET', 'POST'], '/gambar-profile/cari-kakitangan')
+                ->action(Web\GambarProfile\Admin\StaffSearchAction::class)
+                ->name('gambar-profile-cari-kakitangan'),
+            Route::methods(['GET', 'POST'], '/gambar-profile/muatnaik-gambar-kakitangan')
+                ->action(Web\GambarProfile\Admin\CounterUploadAction::class)
+                ->name('gambar-profile-muatnaik-gambar-kakitangan'),
+            Route::get('/gambar-profile/admin-senarai-penukaran')
+                ->action(Web\GambarProfile\Admin\CounterHistoryAction::class)
+                ->name('gambar-profile-admin-senarai-penukaran'),
+            Route::get('/gambar-profile/admin-view-penukaran')
+                ->action(Web\GambarProfile\Admin\CounterDetailAction::class)
+                ->name('gambar-profile-admin-view-penukaran'),
+            Route::methods(['GET', 'POST'], '/gambar-profile/tambah-admin')
+                ->action(Web\GambarProfile\Admin\AdminFormAction::class)
+                ->name('gambar-profile-tambah-admin'),
+            Route::get('/gambar-profile/senarai-admin')
+                ->action(Web\GambarProfile\Admin\AdminListAction::class)
+                ->name('gambar-profile-senarai-admin'),
+            Route::get('/gambar-profile/lihat-admin')
+                ->action(Web\GambarProfile\Admin\AdminDetailAction::class)
+                ->name('gambar-profile-lihat-admin'),
+            Route::methods(['GET', 'POST'], '/gambar-profile/kemaskini-admin')
+                ->action(Web\GambarProfile\Admin\AdminFormAction::class)
+                ->name('gambar-profile-kemaskini-admin'),
             Route::methods(['GET', 'POST'], '/biodata/resetpassword')
                 ->action(Web\Biodata\LegacyRedirectAction::class)
                 ->name('biodata-resetpassword'),

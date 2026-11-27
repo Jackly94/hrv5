@@ -2248,3 +2248,142 @@ Still pending:
 - Migrate the admin verification and approval screens from old Yii2 `PengesahanDataStafController` / `views/pengesahan-data-staf/akaun_gaji`.
 - Authenticated dummy request submission test with safe data and upload.
 
+### Biodata Profile Picture Migration Note
+
+Recorded on 2026-11-25.
+
+Current Yii3 state:
+
+- The `Kemaskini Gambar` button on `/biodata/userview` links to `/gambar-profile/semakan`.
+- `/gambar-profile/semakan` is still routed to the local `RecordAction` placeholder, not a real profile-picture workflow.
+- Profile photos are displayed from BKUMS public storage using `https://bkums.ums.edu.my/public/picstf/{SHA1(ICNO)}.jpeg`.
+
+Legacy Yii2 source:
+
+- Controller: `C:\Apache24\htdocs\staff\controllers\GambarProfileController.php`
+- User upload action: `actionGambar()`
+- User request list: `actionSemakan()`
+- User request detail: `actionLihatPermohonan($id)`
+- Admin approval/rejection: `actionSemakanGambar($id)`
+- Main request table: `keselamatan.utils_tbl_gambar`
+- Admin access table: `keselamatan.utils_tbl_gambar_admin`
+- Audit log table: `keselamatan.utils_tbl_gambar_logs`
+- Legacy model: `C:\Apache24\htdocs\staff\models\gambar\TblGambar.php`
+- Legacy admin model: `C:\Apache24\htdocs\staff\models\gambar\TblGambarAdmin.php`
+- Legacy log model: `C:\Apache24\htdocs\staff\models\gambar\TblGambarLogs.php`
+
+Observed business flow:
+
+- Staff uploads a JPEG profile-picture request.
+- Upload is stored in MediaHost under `Maklumat Rekod Kakitangan/gambar_profile`.
+- A request row is inserted into `keselamatan.utils_tbl_gambar`.
+- Staff can view their request history and detail.
+- BPSM/admin reviews pending requests.
+- Rejected requests set `status = 2`, `status_label = 3`, `curr_process = 0`, with admin note.
+- Approved requests first preserve/upload old BKUMS photo to MediaHost when possible, then publish the approved JPEG to BKUMS/public profile-photo storage, then set `status = 1`, `status_label = 4`, `curr_process = 0`.
+- There are extra admin/kaunter flows for direct staff photo upload using `type = 2`.
+
+Migration risks:
+
+- This is not just a form. The approval step depends on BKUMS ImageDepot upload API: `https://bkums.ums.edu.my/imagedepot/web/photo/upload`.
+- Legacy BKUMS API key is hardcoded in `MaklumatPeribadi::UploadPicture`; Yii3 should move this into ignored local config.
+- Existing Yii3 `MediaHostFileService` covers regular MediaHost upload/view/download/delete, but not the BKUMS publish step yet.
+- Validation must preserve JPEG-only, max 2MB, and one pending request per staff.
+- Notification/pending-task refresh exists in legacy but can be migrated after the core request and approval flow if needed.
+
+Recommended continuation slice:
+
+1. Build Yii3 user side first:
+   - `/gambar-profile/semakan`
+   - `/gambar-profile/gambar`
+   - `/gambar-profile/lihat-permohonan`
+   - service for `keselamatan.utils_tbl_gambar`
+   - MediaHost upload using existing `MediaHostFileService`
+2. Build admin review next:
+   - pending list
+   - approve/reject page
+   - `BkumsProfilePhotoService` for BKUMS publish
+   - local config for BKUMS endpoint/API key
+3. Then migrate optional admin/kaunter direct upload and admin-management screens.
+
+### Biodata Profile Picture Continuation
+
+Recorded on 2026-11-27.
+
+Implemented Yii3 continuation:
+
+- Staff/profile-picture workflow through Phase 5 had already been migrated and verified with lint and route boot checks.
+- Phase 6 admin/counter direct upload was added:
+  - `/gambar-profile/cari-kakitangan`
+  - `/gambar-profile/muatnaik-gambar-kakitangan`
+  - `/gambar-profile/admin-senarai-penukaran`
+  - `/gambar-profile/admin-view-penukaran`
+  - MediaHost upload, BKUMS publish path, normalized `type = 2` successful rows, and audit-log insert.
+- Phase 7 admin access management was added:
+  - `/gambar-profile/tambah-admin`
+  - `/gambar-profile/senarai-admin`
+  - `/gambar-profile/lihat-admin`
+  - `/gambar-profile/kemaskini-admin`
+  - scoped BPSM/non-BPSM management rules and duplicate `icno + access_type` guard.
+- GambarProfile admin no-access handling was normalized:
+  - raw empty/system-like `403` responses were replaced with shared `AccessDeniedResponse`;
+  - access-denied page uses the app shell, centered message, soft access-not-granted illustration, and `/menu` back action;
+  - image asset added at `public/images/access-denied-soft.svg`.
+
+Verification:
+
+- `php -l` passed for new/changed GambarProfile Phase 6/7 PHP files and shared access-denied files.
+- `php yii list` passed after Phase 6, Phase 7, and the access-denied UI change.
+
+Still pending:
+
+- Live direct upload/BKUMS publish test requires explicit safe dummy ICNO and JPEG.
+- Live admin create/update smoke requires explicit safe admin-access test data.
+
+### Pengesahan Data Staf Role/Permission Parity
+
+Recorded on 2026-11-27.
+
+Continued `AI hronline/12_pengesahan_data_staf_migration_plan.md` with Phase 13.
+
+Implemented Yii3 parity with old `PengesahanDataStafController` access rules:
+
+- Audited old `Yii::$app->AccessManager->Allowed(Yii::$app->controller->id)` behavior.
+- Corrected Yii3 `AuthorizationService::canAccessController()` from non-existent legacy table names to:
+  - `system_core.user_role`
+  - `system_core.roles`
+- Added `AuthorizationService::canAccessControllerAction()` to check:
+  - controller id
+  - legacy action permission
+  - wildcard `*` permission
+  - active staff existence
+- Added shared `ActionSupport::requireControllerAccess()` for Pengesahan Data Staf actions.
+- Wired migrated Yii3 pages and write endpoints to legacy action permission names:
+  - Akaun Bank landing, verification, verification detail/write, approval, approval detail/write
+  - Keahlian queue, staff detail, and verify mode handling
+  - Keluarga queue/write
+  - Hubungan Keluarga queue/write
+- Recorded that Hubungan Keluarga has no non-admin legacy `pds-keluarga-hubungan` permission in `system_core.role_perm`, so Yii3 correctly allows only admin `*` until legacy permissions are updated.
+
+Files changed in this slice:
+
+- `src/Shared/AuthorizationService.php`
+- `src/Web/PengesahanDataStaf/ActionSupport.php`
+- `src/Web/PengesahanDataStaf/IndexAction.php`
+- `src/Web/PengesahanDataStaf/AkaunBank/*Action.php`
+- `src/Web/PengesahanDataStaf/Keahlian/*Action.php`
+- `src/Web/PengesahanDataStaf/Keluarga/*Action.php`
+- `src/Web/PengesahanDataStaf/HubunganKeluarga/*Action.php`
+- `AI hronline/12_pengesahan_data_staf_migration_plan.md`
+
+Verification:
+
+- `php -l` passed for `AuthorizationService`, `ActionSupport`, and all touched Pengesahan Data Staf action files.
+- `php yii list` passed.
+- Temporary Yii dev server smoke checks:
+  - unauthenticated `/pengesahan-data-staf/index` redirects to `/hronlinev5/login`;
+  - Keahlian role user can open index and Keahlian queue, and gets `403` for Keluarga;
+  - Keluarga role user can open Keluarga queue, and gets `403` for Hubungan Keluarga;
+  - admin/Akaun Bank user can open Akaun Bank landing, verification queue, approval queue, and Hubungan Keluarga.
+- No live write POST was executed.
+

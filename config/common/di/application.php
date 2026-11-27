@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Shared\ApplicationParams;
 use App\Shared\DbConnectionRegistry;
+use App\Shared\GambarProfile\BkumsProfilePhotoService;
 use App\Shared\MediaHostFileService;
 use Yiisoft\Db\Connection\ConnectionInterface;
 
@@ -23,6 +24,11 @@ return [
     MediaHostFileService::class => [
         '__construct()' => [
             'config' => $params['mediahost'] ?? [],
+        ],
+    ],
+    BkumsProfilePhotoService::class => [
+        '__construct()' => [
+            'config' => $params['bkums']['profilePhoto'] ?? [],
         ],
     ],
     ConnectionInterface::class => static fn (DbConnectionRegistry $registry) => $registry->primary(),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Web\PengesahanDataStaf\AkaunBank;
 
+use App\Shared\AuthorizationService;
 use App\Shared\EmployeeRepository;
 use App\Shared\LegacySessionReader;
 use App\Shared\PengesahanDataStaf\AkaunBankVerificationService;
@@ -20,14 +21,22 @@ final readonly class VerifyAction
         private ResponseFactoryInterface $responseFactory,
         private LegacySessionReader $sessionReader,
         private EmployeeRepository $employees,
+        private AuthorizationService $authorization,
         private AkaunBankVerificationService $service,
     ) {}
 
     public function __invoke(ServerRequestInterface $request): ResponseInterface
     {
-        $legacySession = $this->sessionReader->read($request);
-        if ($legacySession === null) {
-            return ActionSupport::redirect($this->responseFactory, '/login');
+        $access = ActionSupport::requireControllerAccess(
+            $request,
+            $this->responseFactory,
+            $this->sessionReader,
+            $this->employees,
+            $this->authorization,
+            'acc-bank-verify',
+        );
+        if ($access['response'] instanceof ResponseInterface) {
+            return $access['response'];
         }
 
         $id = ActionSupport::id($request);
@@ -42,8 +51,7 @@ final readonly class VerifyAction
             $body = ActionSupport::body($request);
             $remarks = is_scalar($body['remarks'] ?? null) ? trim((string) $body['remarks']) : '';
             $action = isset($body['accept']) ? 'accept' : (isset($body['reject']) ? 'reject' : '');
-            $actorIcno = $this->employees->icnoFromIdentity($legacySession['identityId']);
-            $result = $this->service->verify($id, $action, $remarks, $actorIcno);
+            $result = $this->service->verify($id, $action, $remarks, $access['icno']);
             if ($result['success'] === true) {
                 return ActionSupport::redirect($this->responseFactory, '/pengesahan-data-staf/akaun-bank/verification?updated=1');
             }

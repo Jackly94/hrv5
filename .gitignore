@@ -30,3 +30,5 @@ c3.php
 config/common/db-connections.php
 config/common/mediahost.local.php
 config/mediahost.local.php
+config/common/bkums.local.php
+config/bkums.local.php
